@@ -1,0 +1,17 @@
+{
+  "name": "@rs-inventory/printing",
+  "version": "1.0.0",
+  "description": "Thermal receipt and standard invoice printing interfaces for RS Inventory",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rs-inventory/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

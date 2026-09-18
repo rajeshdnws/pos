@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@rs-inventory/types": ["../../packages/types/src/index.ts"],
+      "@rs-inventory/database": ["../../packages/database/src/index.ts"],
+      "@rs-inventory/business": ["../../packages/business/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "rs-inventory",
+  "version": "1.0.0",
+  "description": "Offline-first Windows desktop inventory and billing application for small retail businesses in India",
+  "private": true,
+  "author": "RS Inventory Team",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "desktop/renderer",
+    "desktop/electron",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "dev:renderer": "npm run dev --workspace=@rs-inventory/desktop-renderer",
+    "dev:electron": "npm run dev --workspace=@rs-inventory/desktop-electron",
+    "build": "npm run build:packages && npm run build --workspace=@rs-inventory/desktop-renderer && npm run build --workspace=@rs-inventory/desktop-electron",
+    "build:packages": "npm run build --workspaces --if-present",
+    "build:win": "npm run build && npm run build:win --workspace=@rs-inventory/desktop-electron",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace=@rs-inventory/desktop-renderer",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "npm run db:generate --workspace=@rs-inventory/database",
+    "db:migrate": "npm run db:migrate --workspace=@rs-inventory/database",
+    "db:push": "npm run db:push --workspace=@rs-inventory/database",
+    "db:studio": "npm run db:studio --workspace=@rs-inventory/database"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.9",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.21.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7",
+    "wait-on": "^8.0.2"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
+  }
+}

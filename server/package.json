@@ -1,0 +1,18 @@
+{
+  "name": "@rs-inventory/server",
+  "version": "1.0.0",
+  "description": "Future LAN / Business server architecture stub for RS Inventory",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rs-inventory/business": "*",
+    "@rs-inventory/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "@rs-inventory/desktop-electron",
+  "version": "1.0.0",
+  "description": "Electron main process and preload script for RS Inventory",
+  "private": true,
+  "main": "./dist-electron/main.cjs",
+  "scripts": {
+    "build:main": "esbuild src/main.ts --bundle --platform=node --target=node22 --outfile=dist-electron/main.cjs --external:electron --external:@prisma/client --external:.prisma/client",
+    "build:preload": "esbuild src/preload.ts --bundle --platform=node --target=node22 --outfile=dist-electron/preload.cjs --external:electron",
+    "build": "npm run build:preload && npm run build:main",
+    "dev": "npm run build && electron .",
+    "start": "npm run build && electron .",
+    "build:win": "electron-builder --win",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rs-inventory/business": "*",
+    "@rs-inventory/database": "*",
+    "@rs-inventory/types": "*",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "concurrently": "^9.1.2",
+    "electron": "^34.3.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.rsinventory.solo",
+    "productName": "RS Inventory",
+    "directories": {
+      "output": "../../release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "../renderer/dist/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}
