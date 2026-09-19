@@ -42,6 +42,7 @@ model Company {
   users                 User[]
   categories            Category[]
   units                 Unit[]
+  brands                Brand[]
   products              Product[]
   customers             Customer[]
   suppliers             Supplier[]
@@ -55,6 +56,11 @@ model Company {
   supplierLedgers       SupplierLedger[]
   auditLogs             AuditLog[]
   stockMovements        StockMovement[]
+  stockBalances         StockBalance[]
+  stockAdjustments      StockAdjustment[]
+  stocktakes            Stocktake[]
+  stockTransfers        StockTransfer[]
+  inventoryLocations    InventoryLocation[]
   settings              Setting[]
 
   @@map("companies")
@@ -108,6 +114,7 @@ model Unit {
   name          String
   shortCode     String    @map("short_code")
   allowDecimals Boolean   @default(false) @map("allow_decimals")
+  isActive      Boolean   @default(true) @map("is_active")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -118,101 +125,381 @@ model Unit {
   @@map("units")
 }
 
+// 4b. Brands
+model Brand {
+  id          String    @id @default(uuid())
+  companyId   String    @map("company_id")
+  name        String
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([companyId, name])
+  @@map("brands")
+}
+
 // 5. Products
 model Product {
-  id             String    @id @default(uuid())
-  companyId      String    @map("company_id")
-  categoryId     String?   @map("category_id")
-  unitId         String?   @map("unit_id")
-  name           String
-  sku            String?
-  barcode        String?
-  hsnCode        String?   @map("hsn_code")
-  costPrice      Float     @default(0.0) @map("cost_price")
-  sellingPrice   Float     @default(0.0) @map("selling_price")
-  taxRate        Float     @default(0.0) @map("tax_rate")
-  minStockLevel  Float     @default(0.0) @map("min_stock_level")
-  currentStock   Float     @default(0.0) @map("current_stock")
-  isActive       Boolean   @default(true) @map("is_active")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  companyId        String    @map("company_id")
+  categoryId       String?   @map("category_id")
+  brandId          String?   @map("brand_id")
+  unitId           String?   @map("unit_id")
+  name             String
+  shortName        String?   @map("short_name")
+  description      String?
+  sku              String?
+  barcode          String?
+  hsnCode          String?   @map("hsn_code")
+  productType      String    @default("PHYSICAL") @map("product_type") // PHYSICAL, SERVICE, NON_STOCK
+  purchasePrice    Float     @default(0.0) @map("purchase_price")
+  sellingPrice     Float     @default(0.0) @map("selling_price")
+  mrp              Float     @default(0.0) @map("mrp")
+  taxRate          Float     @default(0.0) @map("tax_rate")
+  minimumStock     Float     @default(0.0) @map("minimum_stock")
+  maximumStock     Float?    @map("maximum_stock")
+  openingStock     Float     @default(0.0) @map("opening_stock")
+  openingStockRate Float     @default(0.0) @map("opening_stock_rate")
+  currentStock     Float     @default(0.0) @map("current_stock")
+  trackStock       Boolean   @default(true) @map("track_stock")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  unit           Unit?         @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  stockMovements StockMovement[]
-  purchaseItems  PurchaseItem[]
-  salesItems     SalesItem[]
-  salesReturnItems SalesReturnItem[]
-  purchaseReturnItems PurchaseReturnItem[]
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category             Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand                Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  unit                 Unit?                 @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  stockMovements       StockMovement[]
+  stockBalances        StockBalance[]
+  stockAdjustmentItems StockAdjustmentItem[]
+  stocktakeItems       StocktakeItem[]
+  stockTransferItems   StockTransferItem[]
+  purchaseItems        PurchaseItem[]
+  salesItems           SalesItem[]
+  salesReturnItems     SalesReturnItem[]
+  purchaseReturnItems  PurchaseReturnItem[]
+  priceHistory         ProductPriceHistory[]
 
   @@unique([companyId, sku])
   @@unique([companyId, barcode])
+  @@index([companyId, name])
+  @@index([companyId, isActive])
   @@map("products")
 }
 
-// 6. Stock Movements
+// 5b. Product Price History
+model ProductPriceHistory {
+  id               String   @id @default(uuid())
+  productId        String   @map("product_id")
+  oldPurchasePrice Float?   @map("old_purchase_price")
+  newPurchasePrice Float    @map("new_purchase_price")
+  oldSellingPrice  Float?   @map("old_selling_price")
+  newSellingPrice  Float    @map("new_selling_price")
+  oldMrp           Float?   @map("old_mrp")
+  newMrp           Float    @map("new_mrp")
+  oldTaxRate       Float?   @map("old_tax_rate")
+  newTaxRate       Float    @map("new_tax_rate")
+  changedBy        String?  @map("changed_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_price_history")
+}
+
+// 5c. Storage Locations
+model InventoryLocation {
+  id                    String            @id @default(uuid())
+  companyId             String            @map("company_id")
+  name                  String
+  code                  String
+  description           String?
+  locationType          String            @default("STORE") @map("location_type") // STORE, WAREHOUSE, BACK_ROOM, DISPLAY
+  isDefault             Boolean           @default(false) @map("is_default")
+  isActive              Boolean           @default(true) @map("is_active")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockMovements        StockMovement[]
+  stockBalances         StockBalance[]
+  stockAdjustments      StockAdjustment[]
+  stocktakes            Stocktake[]
+  transfersFrom         StockTransfer[]   @relation("TransferSource")
+  transfersTo           StockTransfer[]   @relation("TransferDestination")
+  purchases             Purchase[]
+  purchaseReturns       PurchaseReturn[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId, isActive])
+  @@map("inventory_locations")
+}
+
+// 6. Stock Movements (Authoritative Ledger)
 model StockMovement {
-  id          String   @id @default(uuid())
-  companyId   String   @map("company_id")
-  productId   String   @map("product_id")
-  type        String   // PURCHASE, SALE, PURCHASE_RETURN, SALE_RETURN, ADJUSTMENT, OPENING_STOCK
-  quantity    Float
-  unitPrice   Float    @default(0.0) @map("unit_price")
-  referenceId String?  @map("reference_id")
-  notes       String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String            @id @default(uuid())
+  companyId       String            @map("company_id")
+  productId       String            @map("product_id")
+  locationId      String            @map("location_id")
+  movementType    String            @map("movement_type") // OPENING_STOCK, PURCHASE_RECEIPT, SALE, SALES_RETURN, PURCHASE_RETURN, ADJUSTMENT_IN, ADJUSTMENT_OUT, TRANSFER_IN, TRANSFER_OUT, STOCKTAKE_CORRECTION
+  quantity        Float             // Signed quantity: + = increase, - = decrease
+  unitCost        Float             @default(0.0) @map("unit_cost")
+  referenceType   String?           @map("reference_type") // ADJUSTMENT, STOCKTAKE, TRANSFER, PURCHASE, SALE, OPENING
+  referenceId     String?           @map("reference_id")
+  referenceNumber String?           @map("reference_number")
+  movementDate    DateTime          @default(now()) @map("movement_date")
+  notes           String?
+  createdBy       String?           @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product         Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  location        InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
 
+  @@index([companyId, productId])
+  @@index([companyId, locationId])
+  @@index([companyId, movementDate])
+  @@index([companyId, movementType])
   @@map("stock_movements")
+}
+
+// 6b. Stock Balances (Derived Operational Projections)
+model StockBalance {
+  id          String            @id @default(uuid())
+  companyId   String            @map("company_id")
+  productId   String            @map("product_id")
+  locationId  String            @map("location_id")
+  quantity    Float             @default(0.0)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location    InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, productId, locationId])
+  @@index([companyId, locationId])
+  @@map("stock_balances")
+}
+
+// 6c. Stock Adjustments
+model StockAdjustment {
+  id               String                @id @default(uuid())
+  companyId        String                @map("company_id")
+  adjustmentNumber String                @map("adjustment_number")
+  locationId       String                @map("location_id")
+  adjustmentType   String                @map("adjustment_type") // INCREASE, DECREASE
+  reason           String
+  status           String                @default("POSTED") // DRAFT, POSTED, CANCELLED
+  notes            String?
+  createdBy        String?               @map("created_by")
+  approvedBy       String?               @map("approved_by")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location         InventoryLocation     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  items            StockAdjustmentItem[]
+
+  @@unique([companyId, adjustmentNumber])
+  @@index([companyId, createdAt])
+  @@map("stock_adjustments")
+}
+
+// 6d. Stock Adjustment Items
+model StockAdjustmentItem {
+  id                 String          @id @default(uuid())
+  adjustmentId       String          @map("adjustment_id")
+  productId          String          @map("product_id")
+  systemQuantity     Float           @map("system_quantity")
+  countedQuantity    Float?          @map("counted_quantity")
+  differenceQuantity Float           @map("difference_quantity")
+  unitCost           Float           @default(0.0) @map("unit_cost")
+  notes              String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  adjustment         StockAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  product            Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("stock_adjustment_items")
+}
+
+// 6e. Physical Stocktake Sessions
+model Stocktake {
+  id              String            @id @default(uuid())
+  companyId       String            @map("company_id")
+  stocktakeNumber String            @map("stocktake_number")
+  locationId      String            @map("location_id")
+  status          String            @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, CANCELLED
+  startedAt       DateTime?         @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  createdBy       String?           @map("created_by")
+  completedBy     String?           @map("completed_by")
+  notes           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location        InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  items           StocktakeItem[]
+
+  @@unique([companyId, stocktakeNumber])
+  @@index([companyId, status])
+  @@map("stocktakes")
+}
+
+// 6f. Stocktake Items
+model StocktakeItem {
+  id                 String    @id @default(uuid())
+  stocktakeId        String    @map("stocktake_id")
+  productId          String    @map("product_id")
+  systemQuantity     Float     @map("system_quantity")
+  countedQuantity    Float?    @map("counted_quantity")
+  differenceQuantity Float     @default(0.0) @map("difference_quantity")
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  stocktake          Stocktake @relation(fields: [stocktakeId], references: [id], onDelete: Cascade)
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("stocktake_items")
+}
+
+// 6g. Stock Transfers
+model StockTransfer {
+  id                    String              @id @default(uuid())
+  companyId             String              @map("company_id")
+  transferNumber        String              @map("transfer_number")
+  sourceLocationId      String              @map("source_location_id")
+  destinationLocationId String              @map("destination_location_id")
+  status                String              @default("COMPLETED") // PENDING, COMPLETED, CANCELLED
+  notes                 String?
+  createdBy             String?             @map("created_by")
+  completedBy           String?             @map("completed_by")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  completedAt           DateTime?           @map("completed_at")
+
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sourceLocation        InventoryLocation   @relation("TransferSource", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  destinationLocation   InventoryLocation   @relation("TransferDestination", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  items                 StockTransferItem[]
+
+  @@unique([companyId, transferNumber])
+  @@index([companyId, createdAt])
+  @@map("stock_transfers")
+}
+
+// 6h. Stock Transfer Items
+model StockTransferItem {
+  id          String        @id @default(uuid())
+  transferId  String        @map("transfer_id")
+  productId   String        @map("product_id")
+  quantity    Float
+  unitCost    Float         @default(0.0) @map("unit_cost")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  transfer    StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("stock_transfer_items")
 }
 
 // 7. Purchases
 model Purchase {
-  id             String    @id @default(uuid())
-  companyId      String    @map("company_id")
-  supplierId     String    @map("supplier_id")
-  purchaseNumber String    @map("purchase_number")
-  invoiceDate    DateTime  @map("invoice_date")
-  subTotal       Float     @default(0.0) @map("sub_total")
-  taxAmount      Float     @default(0.0) @map("tax_amount")
-  discountAmount Float     @default(0.0) @map("discount_amount")
-  totalAmount    Float     @default(0.0) @map("total_amount")
-  paidAmount     Float     @default(0.0) @map("paid_amount")
-  paymentStatus  String    @default("PENDING") @map("payment_status") // PENDING, PARTIAL, PAID
-  notes          String?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id                    String            @id @default(uuid())
+  companyId             String            @map("company_id")
+  supplierId            String            @map("supplier_id")
+  purchaseNumber        String            @map("purchase_number")
+  supplierInvoiceNumber String?           @map("supplier_invoice_number")
+  purchaseDate          DateTime          @default(now()) @map("purchase_date")
+  dueDate               DateTime?         @map("due_date")
+  locationId            String?           @map("location_id")
+  status                String            @default("DRAFT") @map("status") // DRAFT, POSTED, CANCELLED
+  subtotal              Float             @default(0.0) @map("subtotal")
+  lineDiscountTotal     Float             @default(0.0) @map("line_discount_total")
+  invoiceDiscount       Float             @default(0.0) @map("invoice_discount")
+  taxableAmount         Float             @default(0.0) @map("taxable_amount")
+  cgstAmount            Float             @default(0.0) @map("cgst_amount")
+  sgstAmount            Float             @default(0.0) @map("sgst_amount")
+  igstAmount            Float             @default(0.0) @map("igst_amount")
+  cessAmount            Float             @default(0.0) @map("cess_amount")
+  otherTaxAmount        Float             @default(0.0) @map("other_tax_amount")
+  additionalCharges     Float             @default(0.0) @map("additional_charges")
+  roundOff              Float             @default(0.0) @map("round_off")
+  grandTotal            Float             @default(0.0) @map("grand_total")
+  amountPaid            Float             @default(0.0) @map("amount_paid")
+  amountReturned        Float             @default(0.0) @map("amount_returned")
+  paymentStatus         String            @default("UNPAID") @map("payment_status") // UNPAID, PARTIALLY_PAID, PAID, OVERPAID
+  notes                 String?
+  internalReference     String?           @map("internal_reference")
+  createdBy             String?           @map("created_by")
+  updatedBy             String?           @map("updated_by")
+  postedBy              String?           @map("posted_by")
+  postedAt              DateTime?         @map("posted_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
 
-  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier       Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items          PurchaseItem[]
-  purchaseReturns PurchaseReturn[]
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier              Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  location              InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  items                 PurchaseItem[]
+  purchaseReturns       PurchaseReturn[]
+  payments              PaymentMade[]
 
   @@unique([companyId, purchaseNumber])
+  @@index([companyId, supplierId])
+  @@index([companyId, purchaseDate])
+  @@index([companyId, status])
+  @@index([companyId, paymentStatus])
   @@map("purchases")
 }
 
 // 8. Purchase Items
 model PurchaseItem {
-  id             String   @id @default(uuid())
-  purchaseId     String   @map("purchase_id")
-  productId      String   @map("product_id")
-  quantity       Float
-  unitCost       Float    @map("unit_cost")
-  taxRate        Float    @default(0.0) @map("tax_rate")
-  taxAmount      Float    @default(0.0) @map("tax_amount")
-  discountAmount Float    @default(0.0) @map("discount_amount")
-  totalAmount    Float    @map("total_amount")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id                  String               @id @default(uuid())
+  purchaseId          String               @map("purchase_id")
+  productId           String               @map("product_id")
+  productNameSnapshot String               @default("") @map("product_name_snapshot")
+  skuSnapshot         String?              @map("sku_snapshot")
+  barcodeSnapshot     String?              @map("barcode_snapshot")
+  unitNameSnapshot    String?              @map("unit_name_snapshot")
+  quantity            Float                @default(1.0)
+  freeQuantity        Float                @default(0.0) @map("free_quantity")
+  purchaseRate        Float                @default(0.0) @map("purchase_rate")
+  discountPercentage  Float                @default(0.0) @map("discount_percentage")
+  discountAmount      Float                @default(0.0) @map("discount_amount")
+  taxableAmount       Float                @default(0.0) @map("taxable_amount")
+  taxRate             Float                @default(0.0) @map("tax_rate")
+  cgstRate            Float                @default(0.0) @map("cgst_rate")
+  sgstRate            Float                @default(0.0) @map("sgst_rate")
+  igstRate            Float                @default(0.0) @map("igst_rate")
+  cessRate            Float                @default(0.0) @map("cess_rate")
+  cgstAmount          Float                @default(0.0) @map("cgst_amount")
+  sgstAmount          Float                @default(0.0) @map("sgst_amount")
+  igstAmount          Float                @default(0.0) @map("igst_amount")
+  cessAmount          Float                @default(0.0) @map("cess_amount")
+  taxAmount           Float                @default(0.0) @map("tax_amount")
+  lineTotal           Float                @default(0.0) @map("line_total")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
 
-  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchase            Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  returnItems         PurchaseReturnItem[]
 
+  @@index([purchaseId])
+  @@index([productId])
   @@map("purchase_items")
 }
 
@@ -302,38 +589,67 @@ model SalesReturnItem {
 
 // 13. Purchase Returns
 model PurchaseReturn {
-  id               String               @id @default(uuid())
-  companyId        String               @map("company_id")
-  purchaseId       String               @map("purchase_id")
-  returnNumber     String               @map("return_number")
-  returnDate       DateTime             @map("return_date")
-  totalAmount      Float                @default(0.0) @map("total_amount")
-  reason           String?
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
+  id                 String               @id @default(uuid())
+  companyId          String               @map("company_id")
+  supplierId         String?              @map("supplier_id")
+  purchaseId         String               @map("purchase_id")
+  returnNumber       String               @map("return_number")
+  returnDate         DateTime             @default(now()) @map("return_date")
+  locationId         String?              @map("location_id")
+  status             String               @default("POSTED") @map("status") // DRAFT, POSTED, CANCELLED
+  subtotal           Float                @default(0.0) @map("subtotal")
+  discountAmount     Float                @default(0.0) @map("discount_amount")
+  taxableAmount      Float                @default(0.0) @map("taxable_amount")
+  cgstAmount         Float                @default(0.0) @map("cgst_amount")
+  sgstAmount         Float                @default(0.0) @map("sgst_amount")
+  igstAmount         Float                @default(0.0) @map("igst_amount")
+  cessAmount         Float                @default(0.0) @map("cess_amount")
+  otherTaxAmount     Float                @default(0.0) @map("other_tax_amount")
+  grandTotal         Float                @default(0.0) @map("grand_total")
+  reason             String?
+  notes              String?
+  createdBy          String?              @map("created_by")
+  approvedBy         String?              @map("approved_by")
+  postedBy           String?              @map("posted_by")
+  postedAt           DateTime?            @map("posted_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
 
-  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  purchase         Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
-  items            PurchaseReturnItem[]
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier           Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchase           Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  location           InventoryLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  items              PurchaseReturnItem[]
 
   @@unique([companyId, returnNumber])
+  @@index([companyId, purchaseId])
+  @@index([companyId, returnDate])
   @@map("purchase_returns")
 }
 
 // 14. Purchase Return Items
 model PurchaseReturnItem {
-  id               String         @id @default(uuid())
-  purchaseReturnId String         @map("purchase_return_id")
-  productId        String         @map("product_id")
-  quantity         Float
-  unitCost         Float          @map("unit_cost")
-  totalAmount      Float          @map("total_amount")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  id                  String         @id @default(uuid())
+  purchaseReturnId    String         @map("purchase_return_id")
+  purchaseItemId      String?        @map("purchase_item_id")
+  productId           String         @map("product_id")
+  productNameSnapshot String         @default("") @map("product_name_snapshot")
+  quantity            Float          @default(1.0)
+  returnRate          Float          @default(0.0) @map("return_rate")
+  discountAmount      Float          @default(0.0) @map("discount_amount")
+  taxRate             Float          @default(0.0) @map("tax_rate")
+  taxAmount           Float          @default(0.0) @map("tax_amount")
+  lineTotal           Float          @default(0.0) @map("line_total")
+  reason              String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
 
-  purchaseReturn   PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
-  product          Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseReturn      PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  purchaseItem        PurchaseItem?  @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
+  product             Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
 
+  @@index([purchaseReturnId])
+  @@index([productId])
   @@map("purchase_return_items")
 }
 
@@ -362,24 +678,46 @@ model Customer {
 
 // 16. Suppliers
 model Supplier {
-  id             String           @id @default(uuid())
-  companyId      String           @map("company_id")
-  name           String
-  contactPerson  String?          @map("contact_person")
-  phone          String?
-  email          String?
-  gstin          String?
-  address        String?
-  currentBalance Float            @default(0.0) @map("current_balance")
-  isActive       Boolean          @default(true) @map("is_active")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id                 String           @id @default(uuid())
+  companyId          String           @map("company_id")
+  supplierCode       String           @default("") @map("supplier_code")
+  name               String
+  contactPerson      String?          @map("contact_person")
+  phone              String?
+  alternatePhone     String?          @map("alternate_phone")
+  email              String?
+  website            String?
+  addressLine1       String?          @map("address_line_1")
+  addressLine2       String?          @map("address_line_2")
+  city               String?
+  state              String?
+  pinCode            String?          @map("pin_code")
+  country            String           @default("India")
+  gstin              String?
+  pan                String?
+  registrationType   String           @default("UNREGISTERED") @map("registration_type") // REGULAR, COMPOSITION, UNREGISTERED, OVERSEAS
+  openingBalance     Float            @default(0.0) @map("opening_balance")
+  openingBalanceType String           @default("PAYABLE") @map("opening_balance_type") // PAYABLE, ADVANCE
+  openingBalanceDate DateTime?        @map("opening_balance_date")
+  creditLimit        Float            @default(0.0) @map("credit_limit")
+  creditPeriodDays   Int              @default(0) @map("credit_period_days")
+  notes              String?
+  currentBalance     Float            @default(0.0) @map("current_balance")
+  isActive           Boolean          @default(true) @map("is_active")
+  createdBy          String?          @map("created_by")
+  updatedBy          String?          @map("updated_by")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  purchases      Purchase[]
-  payments       PaymentMade[]
-  ledger         SupplierLedger[]
+  company            Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  purchases          Purchase[]
+  payments           PaymentMade[]
+  ledger             SupplierLedger[]
+  purchaseReturns    PurchaseReturn[]
 
+  @@unique([companyId, supplierCode])
+  @@index([companyId, name])
+  @@index([companyId, isActive])
   @@map("suppliers")
 }
 
@@ -405,21 +743,32 @@ model PaymentReceived {
 
 // 18. Payments Made (To Suppliers)
 model PaymentMade {
-  id            String    @id @default(uuid())
-  companyId     String    @map("company_id")
-  supplierId    String    @map("supplier_id")
-  paymentNumber String    @map("payment_number")
-  paymentDate   DateTime  @map("payment_date")
-  amount        Float
-  paymentMode   String    @default("BANK_TRANSFER") @map("payment_mode") // CASH, UPI, BANK_TRANSFER, CHEQUE
-  referenceNo   String?   @map("reference_no")
-  notes         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String         @id @default(uuid())
+  companyId      String         @map("company_id")
+  supplierId     String         @map("supplier_id")
+  purchaseId     String?        @map("purchase_id")
+  paymentNumber  String         @map("payment_number")
+  paymentDate    DateTime       @default(now()) @map("payment_date")
+  amount         Float          @default(0.0)
+  paymentMode    String         @default("BANK_TRANSFER") @map("payment_mode") // CASH, UPI, BANK_TRANSFER, CHEQUE, CARD, OTHER
+  referenceNo    String?        @map("reference_no")
+  status         String         @default("POSTED") @map("status") // POSTED, REVERSED
+  reversedAt     DateTime?      @map("reversed_at")
+  reversedBy     String?        @map("reversed_by")
+  reversalReason String?        @map("reversal_reason")
+  notes          String?
+  createdBy      String?        @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier      Supplier  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier       Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchase       Purchase?      @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
+  @@unique([companyId, paymentNumber])
+  @@index([companyId, supplierId])
+  @@index([companyId, purchaseId])
+  @@index([companyId, paymentDate])
   @@map("payments_made")
 }
 
@@ -446,22 +795,28 @@ model CustomerLedger {
 
 // 20. Supplier Ledger
 model SupplierLedger {
-  id            String   @id @default(uuid())
-  companyId     String   @map("company_id")
-  supplierId    String   @map("supplier_id")
-  entryDate     DateTime @map("entry_date")
-  transactionType String @map("transaction_type") // PURCHASE, PAYMENT, RETURN, OPENING
-  referenceId   String?  @map("reference_id")
-  debitAmount   Float    @default(0.0) @map("debit_amount")
-  creditAmount  Float    @default(0.0) @map("credit_amount")
-  runningBalance Float   @default(0.0) @map("running_balance")
-  description   String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  companyId       String   @map("company_id")
+  supplierId      String   @map("supplier_id")
+  entryDate       DateTime @default(now()) @map("entry_date")
+  transactionType String   @map("transaction_type") // OPENING_BALANCE, PURCHASE, PAYMENT, PURCHASE_RETURN, PAYMENT_REVERSAL, ADJUSTMENT
+  referenceType   String?  @map("reference_type") // PURCHASE, PAYMENT, RETURN, OPENING
+  referenceId     String?  @map("reference_id")
+  referenceNumber String?  @map("reference_number")
+  debitAmount     Float    @default(0.0) @map("debit_amount") // Decreases payable (e.g. payments, purchase returns, advances)
+  creditAmount    Float    @default(0.0) @map("credit_amount") // Increases payable (e.g. purchases, opening payable)
+  runningBalance  Float    @default(0.0) @map("running_balance")
+  description     String?
+  notes           String?
+  createdBy       String?  @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  @@index([companyId, supplierId, entryDate])
+  @@index([companyId, transactionType])
   @@map("supplier_ledger")
 }
 

@@ -42,8 +42,12 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 border-r border-surface-800/80 bg-surface-950 flex flex-col shrink-0 select-none">
       {/* Brand Header */}
       <div className="h-16 px-6 border-b border-surface-800/80 flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 shrink-0">
-          <Store className="h-5 w-5" />
+        <div className="h-9 w-9 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 shrink-0 overflow-hidden">
+          {company?.logoPath ? (
+            <img src={company.logoPath} alt="Logo" className="h-full w-full object-contain p-0.5" />
+          ) : (
+            <Store className="h-5 w-5" />
+          )}
         </div>
         <div className="overflow-hidden">
           <div className="text-sm font-semibold tracking-wide text-white truncate">

@@ -31,8 +31,8 @@ export class DatabaseService {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // If database file does not exist or is empty (0 bytes), seed it from template
-    if (!fs.existsSync(dbFilePath) || fs.statSync(dbFilePath).size === 0) {
+    // If database file does not exist or is smaller than 10KB (empty / incomplete), seed it from template
+    if (!fs.existsSync(dbFilePath) || fs.statSync(dbFilePath).size < 10240) {
       const candidates = [
         path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventory.db'),
         path.resolve(__dirname, '../prisma/dev-data/database/rs_inventory.db'),
@@ -41,7 +41,7 @@ export class DatabaseService {
         path.resolve(process.cwd(), 'dev-data/database/rs_inventory.db'),
       ];
       for (const candidate of candidates) {
-        if (fs.existsSync(candidate) && fs.statSync(candidate).size > 0) {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).size > 10240) {
           try {
             fs.copyFileSync(candidate, dbFilePath);
             break;

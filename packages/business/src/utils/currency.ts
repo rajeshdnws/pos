@@ -21,8 +21,8 @@ export class CurrencyService {
   public static getDefaultCurrency(): string {
     return this.defaultCurrency;
   }
-
-  public static getDefaultSymbol(): string {
-    return this.defaultSymbol;
-  }
 }
+
+export const formatCurrency = (amount: number, symbol?: string): string =>
+  CurrencyService.format(amount, symbol);
+

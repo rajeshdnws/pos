@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { AuditLog } from '@rs-inventory/types';
 
 export interface RecordAuditParams {
@@ -15,16 +15,37 @@ export interface RecordAuditParams {
 export class AuditService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  public async recordLog(params: RecordAuditParams, tx?: PrismaClient): Promise<AuditLog> {
+  public async log(
+    params: RecordAuditParams,
+    tx?: Prisma.TransactionClient | PrismaClient,
+  ): Promise<AuditLog> {
+    return this.recordLog(params, tx);
+  }
+
+  public async recordLog(
+    params: RecordAuditParams,
+    tx?: Prisma.TransactionClient | PrismaClient,
+  ): Promise<AuditLog> {
     const client = tx || this.prisma;
 
     const safeOldValue = params.oldValue ? JSON.stringify(this.sanitize(params.oldValue)) : null;
     const safeNewValue = params.newValue ? JSON.stringify(this.sanitize(params.newValue)) : null;
 
+    let validUserId: string | null = null;
+    if (params.userId) {
+      const userRecord = await client.user.findUnique({
+        where: { id: params.userId },
+        select: { id: true },
+      });
+      if (userRecord) {
+        validUserId = userRecord.id;
+      }
+    }
+
     const log = await client.auditLog.create({
       data: {
         companyId: params.companyId,
-        userId: params.userId || null,
+        userId: validUserId,
         action: params.action,
         module: params.module,
         referenceId: params.referenceId || null,

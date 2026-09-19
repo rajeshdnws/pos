@@ -107,8 +107,8 @@ describe('Company Setup Integration Tests', () => {
     expect(setupResult.user.role).toBeDefined();
     expect(setupResult.user.role?.name).toBe('ADMINISTRATOR');
 
-    // Check all 33 permissions are granted to the initial Admin
-    expect(setupResult.permissions.length).toBe(33);
+    // Check all 54 permissions are granted to the initial Admin
+    expect(setupResult.permissions.length).toBe(54);
     expect(setupResult.sessionToken).toBeDefined();
 
     // Verify subsequent first-run checks return true

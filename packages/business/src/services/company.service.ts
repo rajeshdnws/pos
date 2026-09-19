@@ -190,6 +190,44 @@ export class CompanyService {
         });
       }
 
+      // 2e-ii. Seed Standard Units
+      const defaultUnits = [
+        { name: 'Piece', shortCode: 'PCS', allowDecimals: false },
+        { name: 'Kilogram', shortCode: 'KG', allowDecimals: true },
+        { name: 'Gram', shortCode: 'GM', allowDecimals: true },
+        { name: 'Liter', shortCode: 'LTR', allowDecimals: true },
+        { name: 'Milliliter', shortCode: 'ML', allowDecimals: true },
+        { name: 'Meter', shortCode: 'MTR', allowDecimals: true },
+        { name: 'Box', shortCode: 'BOX', allowDecimals: false },
+        { name: 'Dozen', shortCode: 'DOZ', allowDecimals: false },
+        { name: 'Packet', shortCode: 'PKT', allowDecimals: false },
+        { name: 'Bottle', shortCode: 'BTL', allowDecimals: false },
+      ];
+      for (const u of defaultUnits) {
+        await tx.unit.create({
+          data: {
+            companyId: companyRecord.id,
+            name: u.name,
+            shortCode: u.shortCode,
+            allowDecimals: u.allowDecimals,
+            isActive: true,
+          },
+        });
+      }
+
+      // 2e-iii. Seed Default Main Store Location
+      await tx.inventoryLocation.create({
+        data: {
+          companyId: companyRecord.id,
+          name: 'Main Store',
+          code: 'MAIN',
+          description: 'Primary store and main stock holding location',
+          locationType: 'STORE',
+          isDefault: true,
+          isActive: true,
+        },
+      });
+
       // 2f. Record Audit Log
       await tx.auditLog.create({
         data: {

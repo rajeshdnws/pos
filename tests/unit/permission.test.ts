@@ -6,24 +6,32 @@ import {
 } from '../../packages/business/src/services/permission.service';
 
 describe('PermissionService & RBAC Unit Tests', () => {
-  it('should define exactly 33 system permissions across modules', () => {
-    expect(SYSTEM_PERMISSIONS.length).toBe(33);
+  it('should define system permissions across modules including products, categories, units, and brands', () => {
+    expect(SYSTEM_PERMISSIONS.length).toBe(54);
 
     const codes = SYSTEM_PERMISSIONS.map((p) => p.code);
     expect(codes).toContain('users.create');
     expect(codes).toContain('users.view');
-    expect(codes).toContain('users.edit');
-    expect(codes).toContain('users.delete');
+    expect(codes).toContain('products.view');
+    expect(codes).toContain('products.create');
+    expect(codes).toContain('categories.view');
+    expect(codes).toContain('units.view');
+    expect(codes).toContain('brands.view');
     expect(codes).toContain('settings.view');
-    expect(codes).toContain('settings.edit');
     expect(codes).toContain('sales.create');
     expect(codes).toContain('reports.view');
+    expect(codes).toContain('inventory.view');
+    expect(codes).toContain('inventory.adjust');
+    expect(codes).toContain('inventory.stocktake');
+    expect(codes).toContain('inventory.reconcile');
+    expect(codes).toContain('inventory.manage_locations');
+    expect(codes).toContain('inventory.transfer');
   });
 
-  it('should grant Administrator all 33 permissions', () => {
+  it('should grant Administrator all system permissions', () => {
     const adminPerms = SYSTEM_ROLES['ADMIN']!;
     expect(adminPerms).toBeDefined();
-    expect(adminPerms.length).toBe(33);
+    expect(adminPerms.length).toBe(54);
 
     // Administrator should have all permissions defined in the system
     SYSTEM_PERMISSIONS.forEach((perm) => {
@@ -31,10 +39,10 @@ describe('PermissionService & RBAC Unit Tests', () => {
     });
   });
 
-  it('should grant Manager 20 operational permissions and exclude system-level admin tasks', () => {
+  it('should grant Manager operational permissions including catalog masters and exclude system-level admin tasks', () => {
     const managerPerms = SYSTEM_ROLES['MANAGER']!;
     expect(managerPerms).toBeDefined();
-    expect(managerPerms.length).toBe(20);
+    expect(managerPerms.length).toBe(38);
 
     // Manager cannot manage users or system settings
     expect(managerPerms).not.toContain('users.view');

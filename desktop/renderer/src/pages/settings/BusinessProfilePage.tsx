@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Upload, Save, Image as ImageIcon } from 'lucide-react';
+import { Building2, Upload, Save, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useCompanyStore } from '../../store/companyStore';
 import { useNotificationStore } from '../../store/notificationStore';
 
@@ -358,9 +358,9 @@ export const BusinessProfilePage: React.FC = () => {
             <div className="h-16 w-16 rounded-2xl bg-surface-950 border border-surface-800 flex items-center justify-center text-slate-500 overflow-hidden">
               {formData.logoPath ? (
                 <img
-                  src={`file://${formData.logoPath}`}
+                  src={formData.logoPath}
                   alt="Company Logo"
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-contain p-1"
                 />
               ) : (
                 <ImageIcon className="h-7 w-7" />
@@ -368,14 +368,26 @@ export const BusinessProfilePage: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <button
-                type="button"
-                onClick={handleSelectLogo}
-                className="inline-flex items-center gap-2 rounded-xl bg-surface-800 px-4 py-2 text-xs font-medium text-slate-200 border border-surface-700 hover:bg-surface-700 transition-all active:scale-95"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                <span>Select Logo from PC</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectLogo}
+                  className="inline-flex items-center gap-2 rounded-xl bg-surface-800 px-4 py-2 text-xs font-medium text-slate-200 border border-surface-700 hover:bg-surface-700 transition-all active:scale-95"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>{formData.logoPath ? 'Change Logo' : 'Select Logo from PC'}</span>
+                </button>
+                {formData.logoPath && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, logoPath: '' }))}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
               <p className="text-[11px] text-slate-400">PNG, JPG, JPEG, or WEBP (Max 2 MB)</p>
             </div>
           </div>

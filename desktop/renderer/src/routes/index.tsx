@@ -12,6 +12,11 @@ import { UserProfilePage } from '../pages/settings/UserProfilePage';
 import { BusinessProfilePage } from '../pages/settings/BusinessProfilePage';
 import { UserManagementPage } from '../pages/settings/UserManagementPage';
 import { ApplicationSettingsPage } from '../pages/settings/ApplicationSettingsPage';
+import { DataManagementPage } from '../pages/settings/DataManagementPage';
+import { ProductsIndexPage } from '../pages/products/ProductsIndexPage';
+import { InventoryIndexPage } from '../pages/inventory/InventoryIndexPage';
+import { PurchasesIndexPage } from '../pages/purchases/PurchasesIndexPage';
+import { SuppliersIndexPage } from '../pages/suppliers/SuppliersIndexPage';
 import { useAuthStore } from '../store/authStore';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
@@ -111,38 +116,41 @@ export const AppRoutes: React.FC = () => {
                 </PermissionGuard>
               }
             />
+            <Route
+              path="data"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Data & Demo Management" />}
+                >
+                  <DataManagementPage />
+                </PermissionGuard>
+              }
+            />
           </Route>
 
-          {/* Placeholder Business Modules (Upcoming Steps) */}
+          {/* Product Master Module */}
           <Route
-            path="/products"
+            path="/products/*"
             element={
-              <ComingSoonPage
-                moduleName="Product & Catalog Management"
-                description="Manage inventory items, barcodes, SKUs, HSN codes, cost & selling prices, and unit conversions."
-                plannedFeatures={[
-                  'Barcode & SKU scanning support',
-                  'HSN code categorization & GST rates',
-                  'Low stock threshold alerts',
-                  'Multiple units (Kg, Pcs, Box, Ltr)',
-                ]}
-              />
+              <PermissionGuard
+                permission="products.view"
+                fallback={<AccessDeniedFallback moduleName="Product Master" />}
+              >
+                <ProductsIndexPage />
+              </PermissionGuard>
             }
           />
 
           <Route
-            path="/purchase"
+            path="/purchase/*"
             element={
-              <ComingSoonPage
-                moduleName="Purchase & Procurement"
-                description="Manage supplier purchase orders, inbound invoices, cost tracking, and purchase returns."
-                plannedFeatures={[
-                  'Purchase invoice entry with GST breakdown',
-                  'Automated stock increment transactions',
-                  'Supplier bill reconciliation',
-                  'Purchase debit notes / returns',
-                ]}
-              />
+              <PermissionGuard
+                permission="purchase.view"
+                fallback={<AccessDeniedFallback moduleName="Purchase & Procurement" />}
+              >
+                <PurchasesIndexPage />
+              </PermissionGuard>
             }
           />
 
@@ -162,21 +170,19 @@ export const AppRoutes: React.FC = () => {
             }
           />
 
+          {/* Inventory & Stock Control Module */}
           <Route
-            path="/inventory"
+            path="/inventory/*"
             element={
-              <ComingSoonPage
-                moduleName="Stock & Inventory Control"
-                description="Real-time stock valuation, inventory auditing, physical adjustments, and movement history."
-                plannedFeatures={[
-                  'Transactional stock movements auditing',
-                  'Damage & wastage stock adjustments',
-                  'Stock transfer & opening balance entry',
-                  'Dead stock & fast-moving analysis',
-                ]}
-              />
+              <PermissionGuard
+                permission="inventory.view"
+                fallback={<AccessDeniedFallback moduleName="Stock & Inventory Control" />}
+              >
+                <InventoryIndexPage />
+              </PermissionGuard>
             }
           />
+
 
           <Route
             path="/customers"
@@ -195,18 +201,14 @@ export const AppRoutes: React.FC = () => {
           />
 
           <Route
-            path="/suppliers"
+            path="/suppliers/*"
             element={
-              <ComingSoonPage
-                moduleName="Supplier Directory & Payables"
-                description="Maintain vendor contact info, GSTINs, purchase history, and payment ledger."
-                plannedFeatures={[
-                  'Supplier payables tracking',
-                  'Outgoing payment vouchers recording',
-                  'Supplier statement reconciliation',
-                  'TDS & GST purchase compliance',
-                ]}
-              />
+              <PermissionGuard
+                permission="suppliers.view"
+                fallback={<AccessDeniedFallback moduleName="Supplier Directory & Payables" />}
+              >
+                <SuppliersIndexPage />
+              </PermissionGuard>
             }
           />
 

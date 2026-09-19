@@ -56,3 +56,9 @@ export class DateTimeService {
     return { start, end, label };
   }
 }
+
+export const formatDate = (date: Date | string | null | undefined): string =>
+  DateTimeService.formatDate(date);
+
+export const formatDateTime = (date: Date | string | null | undefined): string =>
+  DateTimeService.formatDateTime(date);

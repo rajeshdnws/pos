@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { User, Building2, Users, Sliders } from 'lucide-react';
+import { User, Building2, Users, Sliders, Database } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 export const SettingsIndexPage: React.FC = () => {
@@ -19,6 +19,12 @@ export const SettingsIndexPage: React.FC = () => {
       to: '/settings/application',
       label: 'Application Preferences',
       icon: Sliders,
+      permission: 'settings.view',
+    },
+    {
+      to: '/settings/data',
+      label: 'Data & Demo',
+      icon: Database,
       permission: 'settings.view',
     },
   ];
