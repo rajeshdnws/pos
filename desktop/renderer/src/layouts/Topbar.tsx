@@ -10,18 +10,25 @@ import {
   LogOut,
   Building2,
   AlertCircle,
+  KeyRound,
 } from 'lucide-react';
 import { useApplicationStore } from '../store/applicationStore';
 import { useAuthStore } from '../store/authStore';
 import { useCompanyStore } from '../store/companyStore';
+import { useLicenseStore } from '../store/licenseStore';
 
 export const Topbar: React.FC = () => {
   const navigate = useNavigate();
   const { databaseHealth, config } = useApplicationStore();
   const { currentUser, logout } = useAuthStore();
   const { company } = useCompanyStore();
+  const { status: licenseStatus, fetchStatus: fetchLicenseStatus } = useLicenseStore();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  React.useEffect(() => {
+    fetchLicenseStatus();
+  }, [fetchLicenseStatus]);
 
   const handleWindowAction = (action: 'minimize' | 'maximize' | 'close') => {
     if (typeof window !== 'undefined' && window.rsInventory) {
@@ -78,8 +85,34 @@ export const Topbar: React.FC = () => {
             )}
           </div>
 
+          {/* License Status Chip */}
+          <Link
+            to="/settings/license"
+            className={`hidden md:flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-all cursor-pointer ${
+              licenseStatus?.status === 'VALID'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                : licenseStatus?.isTrial
+                ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
+                : licenseStatus?.isExpired
+                ? 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
+                : 'bg-surface-900 text-slate-300 border-surface-800 hover:bg-surface-800'
+            }`}
+            title="View Product License & Entitlements"
+          >
+            <KeyRound className="h-3 w-3" />
+            <span>
+              {licenseStatus?.status === 'VALID'
+                ? 'Solo Licensed'
+                : licenseStatus?.isTrial
+                ? `Trial (${licenseStatus.daysRemaining ?? 'Active'})`
+                : licenseStatus?.isExpired
+                ? 'Expired'
+                : 'Evaluation'}
+            </span>
+          </Link>
+
           {/* Security / Offline Badge */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 bg-surface-900 px-3 py-1 rounded-full border border-surface-800">
+          <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-surface-900 px-3 py-1 rounded-full border border-surface-800">
             <ShieldCheck className="h-3.5 w-3.5 text-brand-400" />
             <span>Offline Solo</span>
           </div>

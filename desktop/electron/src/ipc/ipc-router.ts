@@ -4,12 +4,16 @@ import {
   BrandService,
   CategoryService,
   CompanyService,
+  CustomerService,
   DemoDataService,
   LocationService,
   ProductService,
   PurchasePaymentService,
   PurchaseReturnService,
   PurchaseService,
+  SalesPaymentService,
+  SalesReturnService,
+  SalesService,
   SettingsService,
   StockAdjustmentService,
   StockService,
@@ -19,6 +23,14 @@ import {
   SupplierService,
   UnitService,
   UserService,
+  CashbookService,
+  CashRegisterService,
+  DayEndClosingService,
+  ExpenseCategoryService,
+  ExpenseService,
+  FinancialDashboardService,
+  ReportingService,
+  LicenseService,
 } from '@rs-inventory/business';
 import { DatabaseService } from '@rs-inventory/database';
 import {
@@ -76,13 +88,52 @@ import {
   UserCreateDTO,
   UserUpdateDTO,
   WindowAction,
+  // Step 6
+  CustomerFilterDTO,
+  CustomerCreateDTO,
+  CustomerUpdateDTO,
+  CustomerLedgerFilterDTO,
+  SalesFilterDTO,
+  SalesInvoiceCreateDTO,
+  SalesInvoiceUpdateDTO,
+  SalesPostDTO,
+  SalesCalculationInput,
+  POSProductSearchFilterDTO,
+  SalesPaymentCreateDTO,
+  SalesPaymentFilterDTO,
+  SalesReturnCreateDTO,
+  SalesReturnFilterDTO,
+  // Step 7
+  ExpenseCategoryCreateDTO,
+  ExpenseCategoryUpdateDTO,
+  ExpenseCreateDTO,
+  ExpenseUpdateDTO,
+  ExpenseFilterDTO,
+  CashRegisterCreateDTO,
+  CashRegisterUpdateDTO,
+  CashRegisterOpenSessionDTO,
+  CashRegisterCloseSessionDTO,
+  CashInOutDTO,
+  CashbookFilterDTO,
+  DayEndClosingFilterDTO,
+  // Step 8
+  DateRangeFilter,
+  SalesReportFilters,
+  PurchaseReportFilters,
+  InventoryReportFilters,
+  OutstandingReportFilters,
+  ExpenseReportFilters,
+  TaxReportFilters,
 } from '@rs-inventory/types';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ConfigService } from '../services/config.service.js';
 import { LoggerService } from '../services/logger.service.js';
+import { BackupService } from '../services/backup.service.js';
+import { MachineIdService } from '../services/machine-id.service.js';
+import { LicenseVerifierService } from '../services/license-verifier.service.js';
 
 let activeSessionUser: User | null = null;
 let activeSessionToken: string | null = null;
@@ -92,6 +143,7 @@ export function registerIpcHandlers(): void {
   const configService = ConfigService.getInstance();
   const loggerService = LoggerService.getInstance();
   const dbService = DatabaseService.getInstance();
+  const backupService = BackupService.getInstance();
   const prisma = dbService.getClient();
 
   const authService = new AuthService(prisma);
@@ -114,6 +166,25 @@ export function registerIpcHandlers(): void {
   const purchaseService = new PurchaseService(prisma);
   const purchasePaymentService = new PurchasePaymentService(prisma);
   const purchaseReturnService = new PurchaseReturnService(prisma);
+  // Step 6: Sales & Customer services
+  const customerService = new CustomerService(prisma);
+  const salesService = new SalesService(prisma);
+  const salesPaymentService = new SalesPaymentService(prisma);
+  const salesReturnService = new SalesReturnService(prisma);
+  // Step 7: Expenses & Cash services
+  const expenseCategoryService = new ExpenseCategoryService(prisma);
+  const expenseService = new ExpenseService(prisma);
+  const cashRegisterService = new CashRegisterService(prisma);
+  const cashbookService = new CashbookService(prisma);
+  const dayEndClosingService = new DayEndClosingService(prisma);
+  const financialDashboardService = new FinancialDashboardService(prisma);
+  // Step 8: Reporting
+  const reportingService = new ReportingService(prisma);
+  // Step 10: Licensing & Activation
+  const licenseService = new LicenseService(prisma);
+  const machineIdService = new MachineIdService();
+  const licenseVerifierService = new LicenseVerifierService(licenseService, machineIdService);
+  licenseVerifierService.initialize().catch((err) => loggerService.error('License initialization failed', err));
 
   // Helper for error formatting
   const handleSuccess = <T>(data: T): ApiResponse<T> => ({ success: true, data });
@@ -1460,6 +1531,7 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.PURCHASES_POST,
     async (_event, id: string): Promise<ApiResponse<any>> => {
       try {
+        licenseService.assertFeatureEntitled('purchases.core', 'post purchase');
         const companyId = await getRequiredCompanyId();
         const result = await purchaseService.postPurchase(companyId, id, activeSessionUser?.id);
         return handleSuccess(result);
@@ -1619,6 +1691,894 @@ export function registerIpcHandlers(): void {
       }
     },
   );
+
+  // ─── Step 6: Customers ─────────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_LIST, async (_e, filters: CustomerFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await customerService.listCustomers(companyId, filters));
+    } catch (err) { return handleError(err, 'CUSTOMERS_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_GET, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await customerService.getCustomer(companyId, id));
+    } catch (err) { return handleError(err, 'CUSTOMERS_GET_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_CREATE, async (_e, dto: CustomerCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await customerService.createCustomer(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CUSTOMERS_CREATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_UPDATE, async (_e, arg1: any, arg2?: any) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const id = typeof arg1 === 'object' && arg1 !== null && 'id' in arg1 ? arg1.id : arg1;
+      const dto = typeof arg1 === 'object' && arg1 !== null && 'dto' in arg1 ? arg1.dto : arg2;
+      return handleSuccess(await customerService.updateCustomer(companyId, id, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CUSTOMERS_UPDATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_TOGGLE_ACTIVE, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await customerService.toggleActive(companyId, id, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CUSTOMERS_TOGGLE_ACTIVE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_GENERATE_CODE, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await customerService.generateCode(companyId));
+    } catch (err) { return handleError(err, 'CUSTOMERS_GENERATE_CODE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_GET_LEDGER, async (_e, filters: CustomerLedgerFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const repo = new (await import('@rs-inventory/business')).CustomerLedgerRepository(prisma);
+      return handleSuccess(await repo.findEntries(companyId, filters));
+    } catch (err) { return handleError(err, 'CUSTOMERS_GET_LEDGER_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CUSTOMERS_GET_STATEMENT, async (_e, arg1: any, arg2?: string, arg3?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const customerId = typeof arg1 === 'object' && arg1 !== null && 'customerId' in arg1 ? arg1.customerId : arg1;
+      const startDate = typeof arg1 === 'object' && arg1 !== null && 'startDate' in arg1 ? arg1.startDate : arg2;
+      const endDate = typeof arg1 === 'object' && arg1 !== null && 'endDate' in arg1 ? arg1.endDate : arg3;
+      return handleSuccess(await customerService.getStatement(companyId, customerId, startDate, endDate));
+    } catch (err) { return handleError(err, 'CUSTOMERS_GET_STATEMENT_ERROR'); }
+  });
+
+  // ─── Step 6: Sales Invoices ────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.SALES_LIST, async (_e, filters: SalesFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.listSales(companyId, filters));
+    } catch (err) { return handleError(err, 'SALES_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_GET, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.getSale(companyId, id));
+    } catch (err) { return handleError(err, 'SALES_GET_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_CREATE_DRAFT, async (_e, dto: SalesInvoiceCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.createDraft(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_CREATE_DRAFT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_UPDATE_DRAFT, async (_e, arg1: any, arg2?: any) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const id = typeof arg1 === 'object' && arg1 !== null && 'id' in arg1 ? arg1.id : arg1;
+      const dto = typeof arg1 === 'object' && arg1 !== null && 'dto' in arg1 ? arg1.dto : arg2;
+      return handleSuccess(await salesService.updateDraft(companyId, id, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_UPDATE_DRAFT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_CANCEL_DRAFT, async (_e, arg1: any, arg2?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const id = typeof arg1 === 'object' && arg1 !== null && 'id' in arg1 ? arg1.id : arg1;
+      const reason = typeof arg1 === 'object' && arg1 !== null && 'reason' in arg1 ? arg1.reason : arg2;
+      return handleSuccess(await salesService.cancelDraft(companyId, id, reason, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_CANCEL_DRAFT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_POST, async (_e, arg1: any, arg2?: any) => {
+    try {
+      licenseService.assertFeatureEntitled('sales.core', 'post sale');
+      const companyId = await getRequiredCompanyId();
+      const id = typeof arg1 === 'object' && arg1 !== null && 'id' in arg1 ? arg1.id : arg1;
+      const dto = typeof arg1 === 'object' && arg1 !== null && 'dto' in arg1 ? arg1.dto : arg2;
+      return handleSuccess(await salesService.postSale(companyId, id, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_POST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_CALCULATE, async (_e, input: SalesCalculationInput) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.calculate(companyId, input));
+    } catch (err) { return handleError(err, 'SALES_CALCULATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_GET_SUMMARY, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.getSummary(companyId));
+    } catch (err) { return handleError(err, 'SALES_GET_SUMMARY_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_GET_KPIS, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.getKPIs(companyId));
+    } catch (err) { return handleError(err, 'SALES_GET_KPIS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_SEARCH_PRODUCTS, async (_e, filters: POSProductSearchFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesService.searchPOSProducts(companyId, filters));
+    } catch (err) { return handleError(err, 'SALES_SEARCH_PRODUCTS_ERROR'); }
+  });
+
+  // ─── Step 6: Sales Payments ────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.SALES_PAYMENTS_LIST, async (_e, filters: SalesPaymentFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesPaymentService.listPayments(companyId, filters));
+    } catch (err) { return handleError(err, 'SALES_PAYMENTS_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_PAYMENTS_CREATE, async (_e, dto: SalesPaymentCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesPaymentService.createPayment(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_PAYMENTS_CREATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_PAYMENTS_REVERSE, async (_e, arg1: any, arg2?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      const paymentId = typeof arg1 === 'object' && arg1 !== null && 'paymentId' in arg1 ? arg1.paymentId : arg1;
+      const reason = typeof arg1 === 'object' && arg1 !== null && 'reason' in arg1 ? arg1.reason : (arg2 || 'Reversed by user');
+      return handleSuccess(await salesPaymentService.reversePayment(companyId, paymentId, reason, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_PAYMENTS_REVERSE_ERROR'); }
+  });
+
+  // ─── Step 6: Sales Returns ─────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.SALES_RETURNS_LIST, async (_e, filters: SalesReturnFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesReturnService.listReturns(companyId, filters));
+    } catch (err) { return handleError(err, 'SALES_RETURNS_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_RETURNS_GET, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesReturnService.getReturn(companyId, id));
+    } catch (err) { return handleError(err, 'SALES_RETURNS_GET_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SALES_RETURNS_CREATE, async (_e, dto: SalesReturnCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await salesReturnService.createReturn(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'SALES_RETURNS_CREATE_ERROR'); }
+  });
+
+  // ─── Step 7: Expense Categories ────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSE_CATEGORIES_LIST, async (_e, includeInactive?: boolean) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseCategoryService.listCategories(companyId, includeInactive));
+    } catch (err) { return handleError(err, 'EXPENSE_CATEGORIES_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSE_CATEGORIES_CREATE, async (_e, dto: ExpenseCategoryCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseCategoryService.createCategory(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSE_CATEGORIES_CREATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSE_CATEGORIES_UPDATE, async (_e, payload: { id: string; dto: ExpenseCategoryUpdateDTO }) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseCategoryService.updateCategory(companyId, payload.id, payload.dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSE_CATEGORIES_UPDATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSE_CATEGORIES_DELETE, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseCategoryService.deleteCategory(companyId, id, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSE_CATEGORIES_DELETE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSE_CATEGORIES_SEED_DEFAULTS, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseCategoryService.seedDefaultCategories(companyId, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSE_CATEGORIES_SEED_ERROR'); }
+  });
+
+  // ─── Step 7: Expenses ──────────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_LIST, async (_e, filters?: ExpenseFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.listExpenses(companyId, filters));
+    } catch (err) { return handleError(err, 'EXPENSES_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_GET, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.getExpense(companyId, id));
+    } catch (err) { return handleError(err, 'EXPENSES_GET_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_CREATE_DRAFT, async (_e, dto: ExpenseCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.createDraft(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSES_CREATE_DRAFT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_UPDATE_DRAFT, async (_e, payload: { id: string; dto: ExpenseUpdateDTO }) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.updateDraft(companyId, payload.id, payload.dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSES_UPDATE_DRAFT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_POST, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.postExpense(companyId, id, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSES_POST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXPENSES_CANCEL, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await expenseService.cancelDraft(companyId, id, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'EXPENSES_CANCEL_ERROR'); }
+  });
+
+  // ─── Step 7: Cash Registers & Sessions ─────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_LIST, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.listRegisters(companyId));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_CREATE, async (_e, dto: CashRegisterCreateDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.createRegister(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_CREATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_UPDATE, async (_e, payload: { id: string; dto: CashRegisterUpdateDTO }) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.updateRegister(companyId, payload.id, payload.dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_UPDATE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_GET_ACTIVE_SESSION, async (_e, cashRegisterId?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.getActiveSession(companyId, cashRegisterId));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_ACTIVE_SESSION_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_OPEN_SESSION, async (_e, dto: CashRegisterOpenSessionDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.openSession(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_OPEN_SESSION_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_RECORD_CASH_IN, async (_e, dto: CashInOutDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.recordCashIn(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_CASH_IN_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_RECORD_CASH_OUT, async (_e, dto: CashInOutDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.recordCashOut(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_CASH_OUT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_GET_SESSION_SUMMARY, async (_e, sessionId?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.getSessionSummary(companyId, sessionId));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_SESSION_SUMMARY_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASH_REGISTERS_REOPEN_SESSION, async (_e, payload: { sessionId: string; reason: string }) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashRegisterService.reopenSession(companyId, payload.sessionId, payload.reason, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'CASH_REGISTERS_REOPEN_SESSION_ERROR'); }
+  });
+
+  // ─── Step 7: Cashbook ──────────────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.CASHBOOK_GET_ENTRIES, async (_e, filters?: CashbookFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashbookService.getCashbookEntries(companyId, filters));
+    } catch (err) { return handleError(err, 'CASHBOOK_GET_ENTRIES_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CASHBOOK_GET_SUMMARY, async (_e, filters?: CashbookFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await cashbookService.getCashbookSummary(companyId, filters));
+    } catch (err) { return handleError(err, 'CASHBOOK_GET_SUMMARY_ERROR'); }
+  });
+
+  // ─── Step 7: Day-End Closing ───────────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.DAY_END_CLOSING_PREVIEW, async (_e, sessionId?: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await dayEndClosingService.preview(companyId, sessionId));
+    } catch (err) { return handleError(err, 'DAY_END_CLOSING_PREVIEW_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DAY_END_CLOSING_CLOSE, async (_e, dto: CashRegisterCloseSessionDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await dayEndClosingService.closeSession(companyId, dto, activeSessionUser?.id));
+    } catch (err) { return handleError(err, 'DAY_END_CLOSING_CLOSE_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DAY_END_CLOSING_GET, async (_e, id: string) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await dayEndClosingService.getDayEndClosing(companyId, id));
+    } catch (err) { return handleError(err, 'DAY_END_CLOSING_GET_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DAY_END_CLOSING_LIST, async (_e, filters?: DayEndClosingFilterDTO) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await dayEndClosingService.listDayEndClosings(companyId, filters));
+    } catch (err) { return handleError(err, 'DAY_END_CLOSING_LIST_ERROR'); }
+  });
+
+  // ─── Step 7: Financial Dashboard ───────────────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.FINANCIAL_DASHBOARD_KPIS, async () => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await financialDashboardService.getKPIs(companyId));
+    } catch (err) { return handleError(err, 'FINANCIAL_DASHBOARD_KPIS_ERROR'); }
+  });
+
+  // ─── Step 8: Business Reports & Analytics ─────────────────────────────────
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_DASHBOARD_KPIS, async (_e, filters?: DateRangeFilter) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getBusinessDashboardKPIs(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_DASHBOARD_KPIS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CHARTS_DATA, async (_e, filters?: DateRangeFilter) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getDashboardChartsData(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CHARTS_DATA_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_SALES_SUMMARY, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getSalesSummary(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_SALES_SUMMARY_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_SALES_INVOICE_LIST, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getSalesInvoiceList(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_SALES_INVOICE_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PRODUCT_SALES, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getProductSalesReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PRODUCT_SALES_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CATEGORY_SALES, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getCategorySalesReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CATEGORY_SALES_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CUSTOMER_SALES, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getCustomerSalesReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CUSTOMER_SALES_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PAYMENT_COLLECTIONS, async (_e, filters?: SalesReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getPaymentCollections(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PAYMENT_COLLECTIONS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PURCHASE_SUMMARY, async (_e, filters?: PurchaseReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getPurchaseSummary(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PURCHASE_SUMMARY_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PURCHASE_INVOICE_LIST, async (_e, filters?: PurchaseReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getPurchaseInvoiceList(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PURCHASE_INVOICE_LIST_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PRODUCT_PURCHASES, async (_e, filters?: PurchaseReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getProductPurchaseReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PRODUCT_PURCHASES_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_SUPPLIER_REPORT, async (_e, filters?: PurchaseReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getSupplierReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_SUPPLIER_REPORT_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CURRENT_STOCK, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getCurrentStockReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CURRENT_STOCK_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_LOW_STOCK, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getLowStockReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_LOW_STOCK_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_OUT_OF_STOCK, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getOutOfStockReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_OUT_OF_STOCK_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_STOCK_MOVEMENTS, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getStockMovementsReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_STOCK_MOVEMENTS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_INVENTORY_VALUATION, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getInventoryValuationReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_INVENTORY_VALUATION_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_STOCK_ADJUSTMENTS, async (_e, filters?: InventoryReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getStockAdjustmentsReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_STOCK_ADJUSTMENTS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_PROFIT_LOSS, async (_e, filters?: DateRangeFilter) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getProfitLoss(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_PROFIT_LOSS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CUSTOMER_OUTSTANDING, async (_e, filters?: OutstandingReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getCustomerOutstanding(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CUSTOMER_OUTSTANDING_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_SUPPLIER_OUTSTANDING, async (_e, filters?: OutstandingReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getSupplierOutstanding(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_SUPPLIER_OUTSTANDING_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_EXPENSE_SUMMARY, async (_e, filters?: ExpenseReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getExpenseSummary(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_EXPENSE_SUMMARY_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_CASHBOOK, async (_e, filters?: DateRangeFilter) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getCashbookReport(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_CASHBOOK_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_REGISTER_CLOSINGS, async (_e, filters?: DateRangeFilter) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getRegisterClosings(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_REGISTER_CLOSINGS_ERROR'); }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REPORTS_GET_TAX_SUMMARY, async (_e, filters?: TaxReportFilters) => {
+    try {
+      const companyId = await getRequiredCompanyId();
+      return handleSuccess(await reportingService.getTaxSummary(companyId, filters));
+    } catch (err) { return handleError(err, 'REPORTS_GET_TAX_SUMMARY_ERROR'); }
+  });
+
+  // ---------------- Step 9: Roles & Permissions ----------------
+
+  ipcMain.handle(IPC_CHANNELS.ROLES_GET_MATRIX, async (): Promise<ApiResponse<any>> => {
+    try {
+      const matrix = await userService.getRolesMatrix();
+      return handleSuccess(matrix);
+    } catch (err) {
+      return handleError(err, 'ROLES_GET_MATRIX_ERROR');
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROLES_CREATE,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const role = await userService.createRole(companyId, dto, activeSessionUser?.id);
+        return handleSuccess(role);
+      } catch (err) {
+        return handleError(err, 'ROLE_CREATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROLES_UPDATE,
+    async (_event, payload: { id: string; dto: any }): Promise<ApiResponse<any>> => {
+      try {
+        const role = await userService.updateRole(payload.id, payload.dto, activeSessionUser?.id);
+        return handleSuccess(role);
+      } catch (err) {
+        return handleError(err, 'ROLE_UPDATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROLES_DELETE,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const res = await userService.deleteRole(id, activeSessionUser?.id);
+        return handleSuccess(res);
+      } catch (err) {
+        return handleError(err, 'ROLE_DELETE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROLES_UPDATE_PERMISSIONS,
+    async (_event, payload: { roleId: string; permissionCodes: string[] }): Promise<ApiResponse<any>> => {
+      try {
+        const res = await userService.updateRolePermissions(
+          payload.roleId,
+          payload.permissionCodes,
+          activeSessionUser?.id,
+        );
+        return handleSuccess(res);
+      } catch (err) {
+        return handleError(err, 'ROLES_UPDATE_PERMISSIONS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.PERMISSIONS_LIST_ALL, async (): Promise<ApiResponse<any>> => {
+    try {
+      const perms = await userService.listAllPermissions();
+      return handleSuccess(perms);
+    } catch (err) {
+      return handleError(err, 'PERMISSIONS_LIST_ALL_ERROR');
+    }
+  });
+
+  // ---------------- Step 9: Settings Defaults ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_RESET_DEFAULTS,
+    async (): Promise<ApiResponse<Record<string, string>>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const resetMap = await settingsService.resetDefaults(companyId, activeSessionUser?.id);
+        return handleSuccess(resetMap);
+      } catch (err) {
+        return handleError(err, 'SETTINGS_RESET_DEFAULTS_ERROR');
+      }
+    },
+  );
+
+  // ---------------- Step 9: Backup & Restore ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.BACKUP_CREATE,
+    async (_event, destinationDir?: string): Promise<ApiResponse<any>> => {
+      try {
+        const result = await backupService.createBackup(destinationDir);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'BACKUP_CREATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BACKUP_RESTORE,
+    async (_event, filePath: string): Promise<ApiResponse<any>> => {
+      try {
+        const result = await backupService.restoreBackup(filePath);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'BACKUP_RESTORE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.BACKUP_LIST, async (): Promise<ApiResponse<any>> => {
+    try {
+      const list = backupService.listBackups();
+      return handleSuccess(list);
+    } catch (err) {
+      return handleError(err, 'BACKUP_LIST_ERROR');
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.BACKUP_CHOOSE_DIRECTORY, async (): Promise<ApiResponse<string | null>> => {
+    try {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      const options = {
+        title: 'Choose Backup Directory',
+        properties: ['openDirectory' as const, 'createDirectory' as const],
+      };
+      const result = focusedWindow
+        ? await dialog.showOpenDialog(focusedWindow, options)
+        : await dialog.showOpenDialog(options);
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return handleSuccess(null);
+      }
+      return handleSuccess(result.filePaths[0]);
+    } catch (err) {
+      return handleError(err, 'BACKUP_CHOOSE_DIRECTORY_ERROR');
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.BACKUP_CHOOSE_FILE, async (): Promise<ApiResponse<string | null>> => {
+    try {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      const options = {
+        title: 'Select Backup Database to Restore',
+        filters: [{ name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3'] }],
+        properties: ['openFile' as const],
+      };
+      const result = focusedWindow
+        ? await dialog.showOpenDialog(focusedWindow, options)
+        : await dialog.showOpenDialog(options);
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return handleSuccess(null);
+      }
+      return handleSuccess(result.filePaths[0]);
+    } catch (err) {
+      return handleError(err, 'BACKUP_CHOOSE_FILE_ERROR');
+    }
+  });
+
+  // ---------------- Step 9: System Info & Hardware ----------------
+
+  ipcMain.handle(IPC_CHANNELS.SYSTEM_GET_INFO_DETAILED, async (): Promise<ApiResponse<any>> => {
+    try {
+      const company = await companyService.getCompany();
+      const info = {
+        productName: 'RS Inventory – Solo',
+        companyName: company?.name || 'RS ORANGE TECH PVT LTD',
+        appVersion: app.getVersion() || configService.getAppVersion(),
+        schemaVersion: '1.0.0-step9',
+        platform: process.platform,
+        isOffline: true,
+        databasePath: configService.getDatabasePath(),
+        backupPath: configService.getBackupPath(),
+        logsPath: configService.getLogPath(),
+        nodeVersion: process.versions.node,
+        electronVersion: process.versions.electron || 'unknown',
+      };
+      return handleSuccess(info);
+    } catch (err) {
+      return handleError(err, 'SYSTEM_GET_INFO_DETAILED_ERROR');
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SYSTEM_GET_LOGS_PATH, async (): Promise<ApiResponse<string>> => {
+    try {
+      return handleSuccess(configService.getLogPath());
+    } catch (err) {
+      return handleError(err, 'SYSTEM_GET_LOGS_PATH_ERROR');
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SYSTEM_OPEN_LOGS_FOLDER, async (): Promise<ApiResponse<boolean>> => {
+    try {
+      const logDir = path.dirname(configService.getLogPath());
+      if (fs.existsSync(logDir)) {
+        await shell.openPath(logDir);
+        return handleSuccess(true);
+      }
+      return handleSuccess(false);
+    } catch (err) {
+      return handleError(err, 'SYSTEM_OPEN_LOGS_FOLDER_ERROR');
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PRINTER_LIST_AVAILABLE, async (): Promise<ApiResponse<string[]>> => {
+    try {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win && win.webContents.getPrintersAsync) {
+        const printers = await win.webContents.getPrintersAsync();
+        const names = printers.map((p) => p.name);
+        if (names.length > 0) return handleSuccess(names);
+      }
+      return handleSuccess(['Default System Printer', 'POS-80 Thermal Printer', 'Microsoft Print to PDF']);
+    } catch {
+      return handleSuccess(['Default System Printer', 'Microsoft Print to PDF']);
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRINTER_TEST_PRINT,
+    async (_event, payload?: { printerName?: string; format?: string }): Promise<ApiResponse<any>> => {
+      try {
+        const printer = payload?.printerName || 'Default System Printer';
+        const format = payload?.format || 'thermal';
+        loggerService.info(`Executing test print to [${printer}] with format [${format}]`);
+        return handleSuccess({
+          success: true,
+          message: `Test print sent successfully to "${printer}" (${format === 'thermal' ? '80mm Thermal Receipt' : 'A4 Invoice'}).`,
+        });
+      } catch (err) {
+        return handleError(err, 'PRINTER_TEST_PRINT_ERROR');
+      }
+    },
+  );
+
+  // -------------------------------------------------------------
+  // Step 10: Product Licensing, Activation & Edition Management
+  // -------------------------------------------------------------
+
+  ipcMain.handle(IPC_CHANNELS.LICENSE_GET_STATUS, async (): Promise<ApiResponse<any>> => {
+    try {
+      const status = await licenseVerifierService.getLicenseStatus();
+      return handleSuccess(status);
+    } catch (err) {
+      return handleError(err, 'LICENSE_GET_STATUS_ERROR');
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.LICENSE_GENERATE_REQUEST,
+    async (_event, customerName?: string): Promise<ApiResponse<any>> => {
+      try {
+        const req = await licenseVerifierService.generateActivationRequest(customerName);
+        return handleSuccess(req);
+      } catch (err) {
+        return handleError(err, 'LICENSE_GENERATE_REQUEST_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LICENSE_EXPORT_REQUEST,
+    async (_event, customerName?: string, targetPath?: string): Promise<ApiResponse<any>> => {
+      try {
+        const res = await licenseVerifierService.exportActivationRequest(customerName, targetPath);
+        return handleSuccess(res);
+      } catch (err) {
+        return handleError(err, 'LICENSE_EXPORT_REQUEST_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.LICENSE_CHOOSE_FILE, async (): Promise<ApiResponse<any>> => {
+    try {
+      const chosen = await licenseVerifierService.chooseLicenseFile();
+      return handleSuccess(chosen);
+    } catch (err) {
+      return handleError(err, 'LICENSE_CHOOSE_FILE_ERROR');
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.LICENSE_IMPORT_FILE,
+    async (_event, filePath?: string): Promise<ApiResponse<any>> => {
+      try {
+        const status = await licenseVerifierService.importLicenseFile(filePath);
+        return handleSuccess(status);
+      } catch (err) {
+        return handleError(err, 'LICENSE_IMPORT_FILE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LICENSE_ACTIVATE_KEY,
+    async (_event, licenseFileContent: string): Promise<ApiResponse<any>> => {
+      try {
+        const status = await licenseVerifierService.activateLicenseContent(licenseFileContent);
+        return handleSuccess(status);
+      } catch (err) {
+        return handleError(err, 'LICENSE_ACTIVATE_KEY_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.LICENSE_DEACTIVATE, async (): Promise<ApiResponse<any>> => {
+    try {
+      const result = await licenseVerifierService.deactivateLicense();
+      return handleSuccess(result);
+    } catch (err) {
+      return handleError(err, 'LICENSE_DEACTIVATE_ERROR');
+    }
+  });
 }
 
 

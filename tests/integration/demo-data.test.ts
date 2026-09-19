@@ -64,12 +64,65 @@ describe('Demo Data Management Integration Tests', () => {
     expect(result.transfersCreated).toBe(1);
     expect(result.stocktakesCreated).toBe(1);
 
+    expect(result.customersCreated).toBe(5);
+    expect(result.salesCreated).toBe(6);
+    expect(result.salesPaymentsCreated).toBe(6);
+    expect(result.salesReturnsCreated).toBe(1);
+
     // Verify Demo Status
     const status = await demoDataService.getDemoDataStatus(companyId);
     expect(status.hasDemoData).toBe(true);
     expect(status.demoProductsCount).toBe(16);
     expect(status.demoCategoriesCount).toBe(6);
     expect(status.demoBrandsCount).toBe(8);
+    expect(status.demoCustomersCount).toBe(5);
+    expect(status.demoSalesCount).toBe(6);
+    expect(status.demoSalesPaymentsCount).toBe(6);
+    expect(status.demoSalesReturnsCount).toBe(1);
+
+    // Verify customer balances and Khata ledger
+    const ramesh = await prisma.customer.findFirst({
+      where: { companyId, customerCode: 'CUST-DEMO-001' },
+    });
+    expect(ramesh).not.toBeNull();
+    expect(ramesh?.currentBalance).toBe(2512);
+
+    const vikram = await prisma.customer.findFirst({
+      where: { companyId, customerCode: 'CUST-DEMO-004' },
+    });
+    expect(vikram).not.toBeNull();
+    expect(vikram?.currentBalance).toBe(1000);
+
+    // Verify Sales Invoices
+    const cashSale = await prisma.salesInvoice.findFirst({
+      where: { companyId, invoiceNumber: 'INV-DEMO-001' },
+    });
+    expect(cashSale).not.toBeNull();
+    expect(cashSale?.grandTotal).toBe(646);
+    expect(cashSale?.paymentStatus).toBe('PAID');
+
+    const creditSale = await prisma.salesInvoice.findFirst({
+      where: { companyId, invoiceNumber: 'INV-DEMO-003' },
+    });
+    expect(creditSale).not.toBeNull();
+    expect(creditSale?.grandTotal).toBe(1512);
+    expect(creditSale?.paymentStatus).toBe('UNPAID');
+
+    const igstSale = await prisma.salesInvoice.findFirst({
+      where: { companyId, invoiceNumber: 'INV-DEMO-004' },
+    });
+    expect(igstSale).not.toBeNull();
+    expect(igstSale?.igstAmount).toBeGreaterThan(0);
+    expect(igstSale?.paymentStatus).toBe('PARTIALLY_PAID');
+
+    // Verify Sales Return
+    const salesReturn = await prisma.salesReturn.findFirst({
+      where: { companyId, returnNumber: 'SR-DEMO-001' },
+      include: { items: true },
+    });
+    expect(salesReturn).not.toBeNull();
+    expect(salesReturn?.items.length).toBe(1);
+    expect(salesReturn?.items[0].restockCondition).toBe('RESELLABLE');
 
     // Verify stock valuation
     const valuation = await stockService.getInventoryValuation(companyId);
@@ -95,12 +148,20 @@ describe('Demo Data Management Integration Tests', () => {
 
     expect(clearResult.success).toBe(true);
     expect(clearResult.productsDeleted).toBe(16);
+    expect(clearResult.customersDeleted).toBe(5);
+    expect(clearResult.salesDeleted).toBe(6);
+    expect(clearResult.salesPaymentsDeleted).toBe(6);
+    expect(clearResult.salesReturnsDeleted).toBe(1);
     expect(clearResult.movementsDeleted).toBeGreaterThanOrEqual(16);
 
     // Verify Demo Status is back to clean state
     const status = await demoDataService.getDemoDataStatus(companyId);
     expect(status.hasDemoData).toBe(false);
     expect(status.demoProductsCount).toBe(0);
+    expect(status.demoCustomersCount).toBe(0);
+    expect(status.demoSalesCount).toBe(0);
+    expect(status.demoSalesPaymentsCount).toBe(0);
+    expect(status.demoSalesReturnsCount).toBe(0);
     expect(status.demoMovementsCount).toBe(0);
 
     // Verify company profile and admin user still exist
@@ -119,9 +180,13 @@ describe('Demo Data Management Integration Tests', () => {
     const reinstallResult = await demoDataService.installDemoData(companyId, adminUserId);
     expect(reinstallResult.success).toBe(true);
     expect(reinstallResult.productsCreated).toBe(16);
+    expect(reinstallResult.customersCreated).toBe(5);
+    expect(reinstallResult.salesCreated).toBe(6);
 
     const status = await demoDataService.getDemoDataStatus(companyId);
     expect(status.hasDemoData).toBe(true);
     expect(status.demoProductsCount).toBe(16);
+    expect(status.demoCustomersCount).toBe(5);
+    expect(status.demoSalesCount).toBe(6);
   });
 });

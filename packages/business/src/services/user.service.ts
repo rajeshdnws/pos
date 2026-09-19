@@ -1,5 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { Role, User, UserCreateDTO, UserUpdateDTO } from '@rs-inventory/types';
+import {
+  Role,
+  User,
+  UserCreateDTO,
+  UserUpdateDTO,
+  RoleCreateDTO,
+  RoleUpdateDTO,
+  RoleWithPermissionsDTO,
+  PermissionDefinition,
+} from '@rs-inventory/types';
 import { BusinessRuleError, NotFoundError, ValidationError } from '../errors/app.error.js';
 import { PasswordService } from '../utils/password.js';
 import { ValidationUtils } from '../utils/validation.js';
@@ -263,5 +272,228 @@ export class UserService {
         ipAddress: '127.0.0.1',
       },
     });
+  }
+
+  // ── Role & Permission Management ─────────────────────────────────────────────
+
+  public async listAllPermissions(): Promise<PermissionDefinition[]> {
+    const perms = await this.prisma.permission.findMany({
+      orderBy: [{ module: 'asc' }, { name: 'asc' }],
+    });
+    return perms as unknown as PermissionDefinition[];
+  }
+
+  public async getRolesMatrix(): Promise<RoleWithPermissionsDTO[]> {
+    const roles = await this.prisma.role.findMany({
+      include: {
+        permissions: {
+          include: { permission: true },
+        },
+        _count: {
+          select: { users: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return roles.map((r) => ({
+      ...r,
+      userCount: r._count.users,
+    })) as unknown as RoleWithPermissionsDTO[];
+  }
+
+  public async createRole(
+    companyId: string,
+    dto: RoleCreateDTO,
+    actorUserId?: string,
+  ): Promise<Role> {
+    const cleanName = dto.name?.trim().toUpperCase();
+    if (!cleanName || cleanName.length < 2) {
+      throw new ValidationError('Role name must be at least 2 characters long.');
+    }
+
+    const existing = await this.prisma.role.findUnique({
+      where: { name: cleanName },
+    });
+    if (existing) {
+      throw new ValidationError(`Role '${cleanName}' already exists.`);
+    }
+
+    const permissions = await this.prisma.permission.findMany({
+      where: { code: { in: dto.permissionCodes || [] } },
+      select: { id: true, code: true },
+    });
+
+    const newRole = await this.prisma.role.create({
+      data: {
+        name: cleanName,
+        description: dto.description?.trim() || null,
+        isSystemRole: false,
+        permissions: {
+          create: permissions.map((p) => ({
+            permissionId: p.id,
+          })),
+        },
+      },
+      include: {
+        permissions: {
+          include: { permission: true },
+        },
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        companyId,
+        userId: actorUserId || null,
+        action: 'ROLE_CREATED',
+        module: 'USERS',
+        referenceId: newRole.id,
+        newValue: JSON.stringify({ name: newRole.name, permissionsCount: permissions.length }),
+        ipAddress: '127.0.0.1',
+      },
+    });
+
+    return newRole as unknown as Role;
+  }
+
+  public async updateRole(
+    roleId: string,
+    dto: RoleUpdateDTO,
+    actorUserId?: string,
+  ): Promise<Role> {
+    const existing = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      include: { permissions: { include: { permission: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Role', roleId);
+    }
+
+    let updatedName = existing.name;
+    if (dto.name && dto.name.trim().toUpperCase() !== existing.name) {
+      if (existing.isSystemRole) {
+        throw new BusinessRuleError('Cannot rename a built-in system role.');
+      }
+      updatedName = dto.name.trim().toUpperCase();
+      const duplicate = await this.prisma.role.findUnique({ where: { name: updatedName } });
+      if (duplicate && duplicate.id !== roleId) {
+        throw new ValidationError(`Role name '${updatedName}' is already taken.`);
+      }
+    }
+
+    const updatedRole = await this.prisma.$transaction(async (tx) => {
+      if (dto.permissionCodes !== undefined) {
+        const perms = await tx.permission.findMany({
+          where: { code: { in: dto.permissionCodes } },
+          select: { id: true },
+        });
+
+        await tx.rolePermission.deleteMany({
+          where: { roleId },
+        });
+
+        if (perms.length > 0) {
+          for (const p of perms) {
+            await tx.rolePermission.create({
+              data: {
+                roleId,
+                permissionId: p.id,
+              },
+            });
+          }
+        }
+      }
+
+      return tx.role.update({
+        where: { id: roleId },
+        data: {
+          name: updatedName,
+          description: dto.description !== undefined ? dto.description?.trim() || null : existing.description,
+        },
+        include: {
+          permissions: {
+            include: { permission: true },
+          },
+        },
+      });
+    });
+
+    const userInCompany = await this.prisma.user.findFirst({
+      where: { roleId },
+      select: { companyId: true },
+    });
+    const companyId = userInCompany?.companyId || (await this.prisma.company.findFirst({ select: { id: true } }))?.id || '';
+
+    if (companyId) {
+      await this.prisma.auditLog.create({
+        data: {
+          companyId,
+          userId: actorUserId || null,
+          action: 'ROLE_UPDATED',
+          module: 'USERS',
+          referenceId: roleId,
+          oldValue: JSON.stringify({ name: existing.name }),
+          newValue: JSON.stringify({ name: updatedRole.name, permissionsCount: dto.permissionCodes?.length }),
+          ipAddress: '127.0.0.1',
+        },
+      });
+    }
+
+    return updatedRole as unknown as Role;
+  }
+
+  public async deleteRole(roleId: string, actorUserId?: string): Promise<{ message: string }> {
+    const existing = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      include: {
+        _count: { select: { users: true } },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Role', roleId);
+    }
+    if (existing.isSystemRole) {
+      throw new BusinessRuleError('Built-in system roles cannot be deleted.');
+    }
+    if (existing._count.users > 0) {
+      throw new BusinessRuleError(
+        `Cannot delete role '${existing.name}' because ${existing._count.users} user(s) are currently assigned to it. Reassign those users first.`,
+      );
+    }
+
+    const userInCompany = await this.prisma.user.findFirst({ select: { companyId: true } });
+    const companyId = userInCompany?.companyId || '';
+
+    await this.prisma.role.delete({
+      where: { id: roleId },
+    });
+
+    if (companyId) {
+      await this.prisma.auditLog.create({
+        data: {
+          companyId,
+          userId: actorUserId || null,
+          action: 'ROLE_DELETED',
+          module: 'USERS',
+          referenceId: roleId,
+          oldValue: JSON.stringify({ name: existing.name }),
+          ipAddress: '127.0.0.1',
+        },
+      });
+    }
+
+    return { message: `Role '${existing.name}' deleted successfully.` };
+  }
+
+  public async updateRolePermissions(
+    roleId: string,
+    permissionCodes: string[],
+    actorUserId?: string,
+  ): Promise<{ message: string }> {
+    await this.updateRole(roleId, { permissionCodes }, actorUserId);
+    return { message: 'Role permissions updated successfully.' };
   }
 }

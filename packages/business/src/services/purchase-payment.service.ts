@@ -38,6 +38,14 @@ export class PurchasePaymentService {
     return this.repo.findById(id, companyId);
   }
 
+  public async recordPayment(
+    companyId: string,
+    dto: PurchasePaymentCreateDTO,
+    userId?: string,
+  ): Promise<PurchasePayment> {
+    return this.createPayment(companyId, dto, userId);
+  }
+
   public async createPayment(
     companyId: string,
     dto: PurchasePaymentCreateDTO,
@@ -136,6 +144,35 @@ export class PurchasePaymentService {
             updatedBy: userId || null,
           },
         });
+      }
+
+      // Record Cash Register movement if paymentMode is CASH
+      if ((dto.paymentMode || 'BANK_TRANSFER') === 'CASH') {
+        const activeSession = await tx.cashRegisterSession.findFirst({
+          where: { companyId, status: 'OPEN' },
+          orderBy: { openedAt: 'desc' },
+        });
+        if (activeSession) {
+          const movNumber = await this.sequenceService.getNextNumber(companyId, 'MOV', 6, tx);
+          await tx.cashMovement.create({
+            data: {
+              companyId,
+              cashRegisterId: activeSession.cashRegisterId,
+              cashRegisterSessionId: activeSession.id,
+              movementNumber: movNumber,
+              movementType: 'SUPPLIER_CASH_PAYMENT',
+              amount,
+              movementDate: payment.paymentDate,
+              referenceType: 'SUPPLIER_PAYMENT',
+              referenceId: payment.id,
+              referenceNumber: paymentNumber,
+              description: purchase
+                ? `Supplier cash payment for ${purchase.purchaseNumber} to ${supplier.name}`
+                : `Supplier cash payment ${paymentNumber} to ${supplier.name}`,
+              createdBy: userId || null,
+            },
+          });
+        }
       }
 
       // 4. Update Supplier Balance

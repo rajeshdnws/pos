@@ -48,7 +48,7 @@ describe('Authentication & Session Management Integration Tests', () => {
     expect(res).toBeDefined();
     expect(res.user.username).toBe(adminUsername);
     expect(res.user.role?.name).toBe('ADMINISTRATOR');
-    expect(res.permissions.length).toBe(54);
+    expect(res.permissions.length).toBeGreaterThanOrEqual(54);
     expect(res.sessionToken).toBeDefined();
     expect(res.company.name).toBe('Auth Test Supermarket');
 

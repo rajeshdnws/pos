@@ -1,0 +1,21 @@
+{
+  "name": "@rs-inventory/license-issuer",
+  "version": "1.0.0",
+  "description": "Internal License Generation & Signing CLI Tool for RS ORANGE TECH PVT LTD",
+  "private": true,
+  "type": "module",
+  "main": "./dist/issuer.js",
+  "bin": {
+    "rs-license-issuer": "./dist/issuer.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "generate-keys": "node dist/issuer.js generate-keys",
+    "issue": "node dist/issuer.js issue",
+    "verify": "node dist/issuer.js verify"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "typescript": "^5.8.2"
+  }
+}

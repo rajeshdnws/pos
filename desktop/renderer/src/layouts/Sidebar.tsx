@@ -11,6 +11,8 @@ import {
   BarChart3,
   Settings,
   Store,
+  Wallet,
+  CircleDollarSign,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -26,6 +28,8 @@ const navItems: NavItem[] = [
   { name: 'Products', to: '/products', icon: Package, permission: 'products.view' },
   { name: 'Purchase', to: '/purchase', icon: ShoppingCart, permission: 'purchase.view' },
   { name: 'Sales', to: '/sales', icon: Receipt, permission: 'sales.view' },
+  { name: 'Cash Register', to: '/cash-register', icon: CircleDollarSign, permission: 'cashRegister.view' },
+  { name: 'Expenses', to: '/expenses', icon: Wallet, permission: 'expense.view' },
   { name: 'Inventory', to: '/inventory', icon: Boxes, permission: 'inventory.view' },
   { name: 'Customers', to: '/customers', icon: Users, permission: 'customers.view' },
   { name: 'Suppliers', to: '/suppliers', icon: Truck, permission: 'suppliers.view' },

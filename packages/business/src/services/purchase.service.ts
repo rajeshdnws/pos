@@ -71,6 +71,14 @@ export class PurchaseService {
     });
   }
 
+  public async createPurchase(
+    companyId: string,
+    dto: PurchaseDraftCreateDTO,
+    userId?: string,
+  ): Promise<Purchase> {
+    return this.createDraft(companyId, dto, userId);
+  }
+
   public async createDraft(
     companyId: string,
     dto: PurchaseDraftCreateDTO,

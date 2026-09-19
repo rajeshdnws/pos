@@ -52,3 +52,10 @@ Thumbs.db
 *.zip
 *.blockmap
 builder-effective-config.yaml
+
+# Licensing keys (private signing keys must never be committed)
+*.pem.private
+license_private.pem
+keys/private/
+.keys/
+tools/license-issuer/keys/private/

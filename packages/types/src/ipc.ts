@@ -78,11 +78,42 @@ export const IPC_CHANNELS = {
   USERS_TOGGLE_ACTIVE: 'users:toggle-active',
   USERS_RESET_PASSWORD: 'users:reset-password',
   ROLES_GET_ALL: 'roles:get-all',
+  ROLES_CREATE: 'roles:create',
+  ROLES_UPDATE: 'roles:update',
+  ROLES_DELETE: 'roles:delete',
+  ROLES_GET_MATRIX: 'roles:get-matrix',
+  ROLES_UPDATE_PERMISSIONS: 'roles:update-permissions',
+  PERMISSIONS_LIST_ALL: 'permissions:list-all',
 
   // Settings & Audits
   SETTINGS_GET_ALL: 'settings:get-all',
   SETTINGS_UPDATE: 'settings:update',
+  SETTINGS_RESET_DEFAULTS: 'settings:reset-defaults',
   AUDIT_GET_LOGS: 'audit:get-logs',
+
+  // Step 9: Database Backup & Restore
+  BACKUP_CREATE: 'backup:create',
+  BACKUP_RESTORE: 'backup:restore',
+  BACKUP_LIST: 'backup:list',
+  BACKUP_CHOOSE_DIRECTORY: 'backup:choose-directory',
+  BACKUP_CHOOSE_FILE: 'backup:choose-file',
+
+  // Step 9: System & Hardware
+  SYSTEM_GET_INFO_DETAILED: 'system:get-info-detailed',
+  SYSTEM_GET_LOGS: 'system:get-logs',
+  SYSTEM_GET_LOGS_PATH: 'system:get-logs-path',
+  SYSTEM_OPEN_LOGS_FOLDER: 'system:open-logs-folder',
+  PRINTER_LIST_AVAILABLE: 'printer:list-available',
+  PRINTER_TEST_PRINT: 'printer:test-print',
+
+  // Step 10: Licensing & Activation
+  LICENSE_GET_STATUS: 'license:get-status',
+  LICENSE_GENERATE_REQUEST: 'license:generate-request',
+  LICENSE_EXPORT_REQUEST: 'license:export-request',
+  LICENSE_IMPORT_FILE: 'license:import-file',
+  LICENSE_ACTIVATE_KEY: 'license:activate-key',
+  LICENSE_DEACTIVATE: 'license:deactivate',
+  LICENSE_CHOOSE_FILE: 'license:choose-file',
 
   // Categories
   CATEGORIES_LIST: 'categories:list',
@@ -193,6 +224,104 @@ export const IPC_CHANNELS = {
   // Step 5: Supplier Ledger
   SUPPLIER_LEDGER_GET_ENTRIES: 'supplier-ledger:get-entries',
   SUPPLIER_LEDGER_GET_STATEMENT: 'supplier-ledger:get-statement',
+
+  // Step 6: Customers
+  CUSTOMERS_LIST: 'customers:list',
+  CUSTOMERS_GET: 'customers:get',
+  CUSTOMERS_CREATE: 'customers:create',
+  CUSTOMERS_UPDATE: 'customers:update',
+  CUSTOMERS_TOGGLE_ACTIVE: 'customers:toggle-active',
+  CUSTOMERS_GENERATE_CODE: 'customers:generate-code',
+  CUSTOMERS_GET_LEDGER: 'customers:get-ledger',
+  CUSTOMERS_GET_STATEMENT: 'customers:get-statement',
+
+  // Step 6: Sales Invoices
+  SALES_LIST: 'sales:list',
+  SALES_GET: 'sales:get',
+  SALES_CREATE_DRAFT: 'sales:create-draft',
+  SALES_UPDATE_DRAFT: 'sales:update-draft',
+  SALES_CANCEL_DRAFT: 'sales:cancel-draft',
+  SALES_POST: 'sales:post',
+  SALES_CALCULATE: 'sales:calculate',
+  SALES_GET_SUMMARY: 'sales:get-summary',
+  SALES_GET_KPIS: 'sales:get-kpis',
+  SALES_SEARCH_PRODUCTS: 'sales:search-products',
+
+  // Step 6: Sales Payments
+  SALES_PAYMENTS_LIST: 'sales-payments:list',
+  SALES_PAYMENTS_CREATE: 'sales-payments:create',
+  SALES_PAYMENTS_REVERSE: 'sales-payments:reverse',
+
+  // Step 6: Sales Returns
+  SALES_RETURNS_LIST: 'sales-returns:list',
+  SALES_RETURNS_GET: 'sales-returns:get',
+  SALES_RETURNS_CREATE: 'sales-returns:create',
+
+  // Step 7: Expense Categories
+  EXPENSE_CATEGORIES_LIST: 'expense-categories:list',
+  EXPENSE_CATEGORIES_CREATE: 'expense-categories:create',
+  EXPENSE_CATEGORIES_UPDATE: 'expense-categories:update',
+  EXPENSE_CATEGORIES_DELETE: 'expense-categories:delete',
+  EXPENSE_CATEGORIES_SEED_DEFAULTS: 'expense-categories:seed-defaults',
+
+  // Step 7: Expenses
+  EXPENSES_LIST: 'expenses:list',
+  EXPENSES_GET: 'expenses:get',
+  EXPENSES_CREATE_DRAFT: 'expenses:create-draft',
+  EXPENSES_UPDATE_DRAFT: 'expenses:update-draft',
+  EXPENSES_POST: 'expenses:post',
+  EXPENSES_CANCEL: 'expenses:cancel',
+
+  // Step 7: Cash Registers & Sessions
+  CASH_REGISTERS_LIST: 'cash-registers:list',
+  CASH_REGISTERS_CREATE: 'cash-registers:create',
+  CASH_REGISTERS_UPDATE: 'cash-registers:update',
+  CASH_REGISTERS_GET_ACTIVE_SESSION: 'cash-registers:get-active-session',
+  CASH_REGISTERS_OPEN_SESSION: 'cash-registers:open-session',
+  CASH_REGISTERS_RECORD_CASH_IN: 'cash-registers:record-cash-in',
+  CASH_REGISTERS_RECORD_CASH_OUT: 'cash-registers:record-cash-out',
+  CASH_REGISTERS_GET_SESSION_SUMMARY: 'cash-registers:get-session-summary',
+  CASH_REGISTERS_REOPEN_SESSION: 'cash-registers:reopen-session',
+
+  // Step 7: Cashbook
+  CASHBOOK_GET_ENTRIES: 'cashbook:get-entries',
+  CASHBOOK_GET_SUMMARY: 'cashbook:get-summary',
+
+  // Step 7: Day-End Closing
+  DAY_END_CLOSING_PREVIEW: 'day-end-closing:preview',
+  DAY_END_CLOSING_CLOSE: 'day-end-closing:close',
+  DAY_END_CLOSING_GET: 'day-end-closing:get',
+  DAY_END_CLOSING_LIST: 'day-end-closing:list',
+
+  // Step 7: Financial Dashboard
+  FINANCIAL_DASHBOARD_KPIS: 'financial:dashboard-kpis',
+
+  // Step 8: Business Reports & Analytics
+  REPORTS_GET_DASHBOARD_KPIS: 'reports:get-dashboard-kpis',
+  REPORTS_GET_CHARTS_DATA: 'reports:get-charts-data',
+  REPORTS_GET_SALES_SUMMARY: 'reports:get-sales-summary',
+  REPORTS_GET_SALES_INVOICE_LIST: 'reports:get-sales-invoice-list',
+  REPORTS_GET_PRODUCT_SALES: 'reports:get-product-sales',
+  REPORTS_GET_CATEGORY_SALES: 'reports:get-category-sales',
+  REPORTS_GET_CUSTOMER_SALES: 'reports:get-customer-sales',
+  REPORTS_GET_PAYMENT_COLLECTIONS: 'reports:get-payment-collections',
+  REPORTS_GET_PURCHASE_SUMMARY: 'reports:get-purchase-summary',
+  REPORTS_GET_PURCHASE_INVOICE_LIST: 'reports:get-purchase-invoice-list',
+  REPORTS_GET_PRODUCT_PURCHASES: 'reports:get-product-purchases',
+  REPORTS_GET_SUPPLIER_REPORT: 'reports:get-supplier-report',
+  REPORTS_GET_CURRENT_STOCK: 'reports:get-current-stock',
+  REPORTS_GET_LOW_STOCK: 'reports:get-low-stock',
+  REPORTS_GET_OUT_OF_STOCK: 'reports:get-out-of-stock',
+  REPORTS_GET_STOCK_MOVEMENTS: 'reports:get-stock-movements',
+  REPORTS_GET_INVENTORY_VALUATION: 'reports:get-inventory-valuation',
+  REPORTS_GET_STOCK_ADJUSTMENTS: 'reports:get-stock-adjustments',
+  REPORTS_GET_PROFIT_LOSS: 'reports:get-profit-loss',
+  REPORTS_GET_CUSTOMER_OUTSTANDING: 'reports:get-customer-outstanding',
+  REPORTS_GET_SUPPLIER_OUTSTANDING: 'reports:get-supplier-outstanding',
+  REPORTS_GET_EXPENSE_SUMMARY: 'reports:get-expense-summary',
+  REPORTS_GET_CASHBOOK: 'reports:get-cashbook',
+  REPORTS_GET_REGISTER_CLOSINGS: 'reports:get-register-closings',
+  REPORTS_GET_TAX_SUMMARY: 'reports:get-tax-summary',
 } as const;
 
 export type WindowAction = 'minimize' | 'maximize' | 'close' | 'restart';
@@ -341,6 +470,138 @@ export interface RsInventoryApi {
   // Step 5: Supplier Ledger
   getSupplierLedgerEntries: (filters: import('./domain.js').SupplierLedgerFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').SupplierLedgerEntry>>>;
   getSupplierStatement: (supplierId: string, startDateOrOptions?: any, endDate?: string) => Promise<ApiResponse<import('./domain.js').SupplierStatementDTO>>;
+
+  // Step 6: Customers
+  listCustomers: (filters?: import('./domain.js').CustomerFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').Customer>>>;
+  getCustomer: (id: string) => Promise<ApiResponse<import('./domain.js').Customer | null>>;
+  createCustomer: (dto: import('./domain.js').CustomerCreateDTO) => Promise<ApiResponse<import('./domain.js').Customer>>;
+  updateCustomer: (id: string, dto: import('./domain.js').CustomerUpdateDTO) => Promise<ApiResponse<import('./domain.js').Customer>>;
+  toggleCustomerActive: (id: string) => Promise<ApiResponse<import('./domain.js').Customer>>;
+  generateCustomerCode: () => Promise<ApiResponse<string>>;
+  getCustomerLedger: (filters: import('./domain.js').CustomerLedgerFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CustomerLedgerEntry>>>;
+  getCustomerStatement: (customerId: string, startDate?: string, endDate?: string) => Promise<ApiResponse<import('./domain.js').CustomerStatementDTO>>;
+
+  // Step 6: Sales Invoices
+  listSales: (filters?: import('./domain.js').SalesFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').SalesInvoice>>>;
+  getSale: (id: string) => Promise<ApiResponse<import('./domain.js').SalesInvoice | null>>;
+  createSalesDraft: (dto: import('./domain.js').SalesInvoiceCreateDTO) => Promise<ApiResponse<import('./domain.js').SalesInvoice>>;
+  updateSalesDraft: (id: string, dto: import('./domain.js').SalesInvoiceUpdateDTO) => Promise<ApiResponse<import('./domain.js').SalesInvoice>>;
+  cancelSalesDraft: (id: string, reason?: string) => Promise<ApiResponse<import('./domain.js').SalesInvoice>>;
+  postSale: (id: string, dto: import('./domain.js').SalesPostDTO) => Promise<ApiResponse<import('./domain.js').SalesInvoice>>;
+  calculateSales: (input: import('./domain.js').SalesCalculationInput) => Promise<ApiResponse<import('./domain.js').SalesCalculationResult>>;
+  getSalesSummary: () => Promise<ApiResponse<import('./domain.js').SalesSummaryDTO>>;
+  getSalesKPIs: () => Promise<ApiResponse<import('./domain.js').SalesDashboardKPIs>>;
+  searchPOSProducts: (filters: import('./domain.js').POSProductSearchFilterDTO) => Promise<ApiResponse<import('./domain.js').POSProductSearchResult[]>>;
+
+  // Step 6: Sales Payments
+  listSalesPayments: (filters?: import('./domain.js').SalesPaymentFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').SalesPayment>>>;
+  createSalesPayment: (dto: import('./domain.js').SalesPaymentCreateDTO) => Promise<ApiResponse<import('./domain.js').SalesPayment>>;
+  reverseSalesPayment: (paymentId: string, reason: string) => Promise<ApiResponse<import('./domain.js').SalesPayment>>;
+
+  // Step 6: Sales Returns
+  listSalesReturns: (filters?: import('./domain.js').SalesReturnFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').SalesReturn>>>;
+  getSalesReturn: (id: string) => Promise<ApiResponse<import('./domain.js').SalesReturn | null>>;
+  createSalesReturn: (dto: import('./domain.js').SalesReturnCreateDTO) => Promise<ApiResponse<import('./domain.js').SalesReturn>>;
+
+  // Step 7: Expense Categories
+  listExpenseCategories: (includeInactive?: boolean) => Promise<ApiResponse<import('./domain.js').ExpenseCategory[]>>;
+  createExpenseCategory: (dto: import('./domain.js').ExpenseCategoryCreateDTO) => Promise<ApiResponse<import('./domain.js').ExpenseCategory>>;
+  updateExpenseCategory: (id: string, dto: import('./domain.js').ExpenseCategoryUpdateDTO) => Promise<ApiResponse<import('./domain.js').ExpenseCategory>>;
+  deleteExpenseCategory: (id: string) => Promise<ApiResponse<boolean>>;
+  seedDefaultExpenseCategories: () => Promise<ApiResponse<number>>;
+
+  // Step 7: Expenses
+  listExpenses: (filters?: import('./domain.js').ExpenseFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').Expense>>>;
+  getExpense: (id: string) => Promise<ApiResponse<import('./domain.js').Expense | null>>;
+  createExpenseDraft: (dto: import('./domain.js').ExpenseCreateDTO) => Promise<ApiResponse<import('./domain.js').Expense>>;
+  updateExpenseDraft: (id: string, dto: import('./domain.js').ExpenseUpdateDTO) => Promise<ApiResponse<import('./domain.js').Expense>>;
+  postExpense: (id: string) => Promise<ApiResponse<import('./domain.js').Expense>>;
+  cancelExpenseDraft: (id: string) => Promise<ApiResponse<import('./domain.js').Expense>>;
+
+  // Step 7: Cash Registers & Sessions
+  listCashRegisters: () => Promise<ApiResponse<import('./domain.js').CashRegister[]>>;
+  createCashRegister: (dto: import('./domain.js').CashRegisterCreateDTO) => Promise<ApiResponse<import('./domain.js').CashRegister>>;
+  updateCashRegister: (id: string, dto: import('./domain.js').CashRegisterUpdateDTO) => Promise<ApiResponse<import('./domain.js').CashRegister>>;
+  getActiveCashRegisterSession: (cashRegisterId?: string) => Promise<ApiResponse<import('./domain.js').CashRegisterSession | null>>;
+  openCashRegisterSession: (dto: import('./domain.js').CashRegisterOpenSessionDTO) => Promise<ApiResponse<import('./domain.js').CashRegisterSession>>;
+  recordCashIn: (dto: import('./domain.js').CashInOutDTO) => Promise<ApiResponse<import('./domain.js').CashMovement>>;
+  recordCashOut: (dto: import('./domain.js').CashInOutDTO) => Promise<ApiResponse<import('./domain.js').CashMovement>>;
+  getSessionSummary: (sessionId?: string) => Promise<ApiResponse<import('./domain.js').DayEndClosingPreview>>;
+  reopenCashRegisterSession: (sessionId: string, reason: string) => Promise<ApiResponse<import('./domain.js').CashRegisterSession>>;
+
+  // Step 7: Cashbook
+  getCashbookEntries: (filters?: import('./domain.js').CashbookFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CashbookEntry>>>;
+  getCashbookSummary: (filters?: import('./domain.js').CashbookFilterDTO) => Promise<ApiResponse<import('./domain.js').CashbookSummary>>;
+
+  // Step 7: Day-End Closing
+  previewDayEndClosing: (sessionId?: string) => Promise<ApiResponse<import('./domain.js').DayEndClosingPreview>>;
+  closeDayEndSession: (dto: import('./domain.js').CashRegisterCloseSessionDTO) => Promise<ApiResponse<import('./domain.js').DayEndClosing>>;
+  getDayEndClosing: (id: string) => Promise<ApiResponse<import('./domain.js').DayEndClosing | null>>;
+  listDayEndClosings: (filters?: import('./domain.js').DayEndClosingFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').DayEndClosing>>>;
+
+  // Step 7: Financial Dashboard
+  getFinancialDashboardKPIs: () => Promise<ApiResponse<import('./domain.js').FinancialDashboardKPIs>>;
+
+  // Step 8: Business Reports & Analytics
+  getReportDashboardKPIs: (filters?: import('./domain.js').DateRangeFilter) => Promise<ApiResponse<import('./domain.js').BusinessDashboardKPIs>>;
+  getReportChartsData: (filters?: import('./domain.js').DateRangeFilter) => Promise<ApiResponse<import('./domain.js').DashboardChartsData>>;
+  getSalesReportSummary: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<import('./domain.js').SalesReportSummary>>;
+  getSalesInvoiceReportList: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<PaginatedResult<import('./domain.js').SalesInvoiceReportRow>>>;
+  getProductSalesReport: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<import('./domain.js').ProductSalesReportRow[]>>;
+  getCategorySalesReport: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<import('./domain.js').CategorySalesReportRow[]>>;
+  getCustomerSalesReport: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<import('./domain.js').CustomerSalesReportRow[]>>;
+  getPaymentCollectionReport: (filters?: import('./domain.js').SalesReportFilters) => Promise<ApiResponse<PaginatedResult<import('./domain.js').PaymentCollectionRow>>>;
+  getPurchaseReportSummary: (filters?: import('./domain.js').PurchaseReportFilters) => Promise<ApiResponse<import('./domain.js').PurchaseReportSummary>>;
+  getPurchaseInvoiceReportList: (filters?: import('./domain.js').PurchaseReportFilters) => Promise<ApiResponse<PaginatedResult<import('./domain.js').PurchaseInvoiceReportRow>>>;
+  getProductPurchaseReport: (filters?: import('./domain.js').PurchaseReportFilters) => Promise<ApiResponse<import('./domain.js').ProductPurchaseReportRow[]>>;
+  getSupplierReport: (filters?: import('./domain.js').PurchaseReportFilters) => Promise<ApiResponse<import('./domain.js').SupplierReportRow[]>>;
+  getInventoryCurrentStockReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<PaginatedResult<import('./domain.js').InventoryCurrentStockRow>>>;
+  getLowStockReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<import('./domain.js').LowStockReportRow[]>>;
+  getOutOfStockReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<import('./domain.js').OutOfStockReportRow[]>>;
+  getStockMovementsReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<PaginatedResult<import('./domain.js').StockMovementReportRow>>>;
+  getInventoryValuationReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<import('./domain.js').InventoryValuationSummary>>;
+  getStockAdjustmentsReport: (filters?: import('./domain.js').InventoryReportFilters) => Promise<ApiResponse<import('./domain.js').StockAdjustmentReportRow[]>>;
+  getProfitLossReport: (filters?: import('./domain.js').DateRangeFilter) => Promise<ApiResponse<import('./domain.js').ProfitLossReport>>;
+  getCustomerOutstandingReport: (filters?: import('./domain.js').OutstandingReportFilters) => Promise<ApiResponse<import('./domain.js').CustomerOutstandingRow[]>>;
+  getSupplierOutstandingReport: (filters?: import('./domain.js').OutstandingReportFilters) => Promise<ApiResponse<import('./domain.js').SupplierOutstandingRow[]>>;
+  getExpenseSummaryReport: (filters?: import('./domain.js').ExpenseReportFilters) => Promise<ApiResponse<import('./domain.js').ExpenseSummaryReport>>;
+  getCashbookReport: (filters?: import('./domain.js').DateRangeFilter) => Promise<ApiResponse<import('./domain.js').CashbookReportSummary>>;
+  getRegisterClosingReport: (filters?: import('./domain.js').DateRangeFilter) => Promise<ApiResponse<import('./domain.js').RegisterClosingReportRow[]>>;
+  getTaxSummaryReport: (filters?: import('./domain.js').TaxReportFilters) => Promise<ApiResponse<import('./domain.js').TaxSummaryReport>>;
+
+  // Step 9: Roles & Permissions
+  createRole: (dto: import('./domain.js').RoleCreateDTO) => Promise<ApiResponse<import('./domain.js').Role>>;
+  updateRole: (id: string, dto: import('./domain.js').RoleUpdateDTO) => Promise<ApiResponse<import('./domain.js').Role>>;
+  deleteRole: (id: string) => Promise<ApiResponse<{ message: string }>>;
+  getRolesMatrix: () => Promise<ApiResponse<import('./domain.js').RoleWithPermissionsDTO[]>>;
+  updateRolePermissions: (roleId: string, permissionCodes: string[]) => Promise<ApiResponse<{ message: string }>>;
+  listAllPermissions: () => Promise<ApiResponse<import('./domain.js').PermissionDefinition[]>>;
+
+  // Step 9: Settings management
+  resetDefaultSettings: () => Promise<ApiResponse<Record<string, string>>>;
+
+  // Step 9: Backup & Restore
+  createBackup: (destinationDir?: string) => Promise<ApiResponse<import('./domain.js').BackupCreateResult>>;
+  restoreBackup: (filePath: string) => Promise<ApiResponse<import('./domain.js').RestoreResult>>;
+  listBackups: () => Promise<ApiResponse<import('./domain.js').BackupFileInfo[]>>;
+  chooseBackupDirectory: () => Promise<ApiResponse<string | null>>;
+  chooseBackupFile: () => Promise<ApiResponse<string | null>>;
+
+  // Step 9: System & Hardware
+  getSystemInfoDetailed: () => Promise<ApiResponse<import('./domain.js').SystemInfoDTO>>;
+  getLogsPath: () => Promise<ApiResponse<string>>;
+  openLogsFolder: () => Promise<ApiResponse<boolean>>;
+  listAvailablePrinters: () => Promise<ApiResponse<string[]>>;
+  testPrint: (printerName?: string, format?: string) => Promise<ApiResponse<{ success: boolean; message: string }>>;
+
+  // Step 10: Licensing & Activation
+  getLicenseStatus: () => Promise<ApiResponse<import('./license.js').LicenseStatusDTO>>;
+  generateActivationRequest: (customerName?: string) => Promise<ApiResponse<import('./license.js').ActivationRequestDTO>>;
+  exportActivationRequest: (customerName?: string, targetPath?: string) => Promise<ApiResponse<{ filePath: string; fileName: string }>>;
+  importLicenseFile: (filePath?: string) => Promise<ApiResponse<import('./license.js').LicenseStatusDTO>>;
+  activateLicenseContent: (licenseFileContent: string) => Promise<ApiResponse<import('./license.js').LicenseStatusDTO>>;
+  deactivateLicense: () => Promise<ApiResponse<{ success: boolean; message: string }>>;
+  chooseLicenseFile: () => Promise<ApiResponse<string | null>>;
 }
 
 declare global {

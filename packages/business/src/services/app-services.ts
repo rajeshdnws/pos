@@ -1,18 +1,4 @@
-import { ICustomerRepository } from '../repositories/interfaces.js';
-import { Customer } from '@rs-inventory/types';
-
-
-export class CustomerService {
-  constructor(private readonly customerRepo: ICustomerRepository) {}
-
-  public async getCustomerById(id: string): Promise<Customer | null> {
-    return this.customerRepo.findById(id);
-  }
-
-  public async searchCustomers(companyId: string, query: string): Promise<Customer[]> {
-    return this.customerRepo.search(companyId, query);
-  }
-}
+// Stub services retained for backward compatibility where applicable
 
 
 

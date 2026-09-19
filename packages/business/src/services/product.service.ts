@@ -33,6 +33,10 @@ export class ProductService {
     return this.repo.findById(id);
   }
 
+  public async getProduct(id: string, _companyId?: string): Promise<Product | null> {
+    return this.getProductById(id);
+  }
+
   public async getProductBySku(companyId: string, sku: string): Promise<Product | null> {
     return this.repo.findBySku(companyId, sku);
   }

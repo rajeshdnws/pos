@@ -499,6 +499,422 @@ const api: RsInventoryApi = {
   getSupplierStatement: async (supplierId: string, startDateOrOptions?: any, endDate?: string): Promise<ApiResponse<any>> => {
     return ipcRenderer.invoke(IPC_CHANNELS.SUPPLIER_LEDGER_GET_STATEMENT, supplierId, startDateOrOptions, endDate);
   },
+
+  // Step 6: Customers
+  listCustomers: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_LIST, filters);
+  },
+
+  getCustomer: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_GET, id);
+  },
+
+  createCustomer: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_CREATE, dto);
+  },
+
+  updateCustomer: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_UPDATE, { id, dto });
+  },
+
+  toggleCustomerActive: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_TOGGLE_ACTIVE, id);
+  },
+
+  generateCustomerCode: async (): Promise<ApiResponse<string>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_GENERATE_CODE);
+  },
+
+  getCustomerLedger: async (filters: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_GET_LEDGER, filters);
+  },
+
+  getCustomerStatement: async (customerId: string, startDate?: string, endDate?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CUSTOMERS_GET_STATEMENT, { customerId, startDate, endDate });
+  },
+
+  // Step 6: Sales Invoices
+  listSales: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_LIST, filters);
+  },
+
+  getSale: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_GET, id);
+  },
+
+  createSalesDraft: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_CREATE_DRAFT, dto);
+  },
+
+  updateSalesDraft: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_UPDATE_DRAFT, { id, dto });
+  },
+
+  cancelSalesDraft: async (id: string, reason?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_CANCEL_DRAFT, { id, reason });
+  },
+
+  postSale: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_POST, { id, dto });
+  },
+
+  calculateSales: async (input: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_CALCULATE, input);
+  },
+
+  getSalesSummary: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_GET_SUMMARY);
+  },
+
+  getSalesKPIs: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_GET_KPIS);
+  },
+
+  searchPOSProducts: async (filters: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_SEARCH_PRODUCTS, filters);
+  },
+
+  // Step 6: Sales Payments
+  listSalesPayments: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_PAYMENTS_LIST, filters);
+  },
+
+  createSalesPayment: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_PAYMENTS_CREATE, dto);
+  },
+
+  reverseSalesPayment: async (paymentId: string, reason: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_PAYMENTS_REVERSE, { paymentId, reason });
+  },
+
+  // Step 6: Sales Returns
+  listSalesReturns: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_RETURNS_LIST, filters);
+  },
+
+  getSalesReturn: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_RETURNS_GET, id);
+  },
+
+  createSalesReturn: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SALES_RETURNS_CREATE, dto);
+  },
+
+  // Step 7: Expense Categories
+  listExpenseCategories: async (includeInactive?: boolean): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSE_CATEGORIES_LIST, includeInactive);
+  },
+
+  createExpenseCategory: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSE_CATEGORIES_CREATE, dto);
+  },
+
+  updateExpenseCategory: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSE_CATEGORIES_UPDATE, { id, dto });
+  },
+
+  deleteExpenseCategory: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSE_CATEGORIES_DELETE, id);
+  },
+
+  seedDefaultExpenseCategories: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSE_CATEGORIES_SEED_DEFAULTS);
+  },
+
+  // Step 7: Expenses
+  listExpenses: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_LIST, filters);
+  },
+
+  getExpense: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_GET, id);
+  },
+
+  createExpenseDraft: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_CREATE_DRAFT, dto);
+  },
+
+  updateExpenseDraft: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_UPDATE_DRAFT, { id, dto });
+  },
+
+  postExpense: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_POST, id);
+  },
+
+  cancelExpenseDraft: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_CANCEL, id);
+  },
+
+  // Step 7: Cash Registers & Sessions
+  listCashRegisters: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_LIST);
+  },
+
+  createCashRegister: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_CREATE, dto);
+  },
+
+  updateCashRegister: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_UPDATE, { id, dto });
+  },
+
+  getActiveCashRegisterSession: async (cashRegisterId?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_GET_ACTIVE_SESSION, cashRegisterId);
+  },
+
+  openCashRegisterSession: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_OPEN_SESSION, dto);
+  },
+
+  recordCashIn: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_RECORD_CASH_IN, dto);
+  },
+
+  recordCashOut: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_RECORD_CASH_OUT, dto);
+  },
+
+  getSessionSummary: async (sessionId?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_GET_SESSION_SUMMARY, sessionId);
+  },
+
+  reopenCashRegisterSession: async (sessionId: string, reason: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASH_REGISTERS_REOPEN_SESSION, { sessionId, reason });
+  },
+
+  // Step 7: Cashbook
+  getCashbookEntries: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASHBOOK_GET_ENTRIES, filters);
+  },
+
+  getCashbookSummary: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CASHBOOK_GET_SUMMARY, filters);
+  },
+
+  // Step 7: Day-End Closing
+  previewDayEndClosing: async (sessionId?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DAY_END_CLOSING_PREVIEW, sessionId);
+  },
+
+  closeDayEndSession: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DAY_END_CLOSING_CLOSE, dto);
+  },
+
+  getDayEndClosing: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DAY_END_CLOSING_GET, id);
+  },
+
+  listDayEndClosings: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DAY_END_CLOSING_LIST, filters);
+  },
+
+  // Step 7: Financial Dashboard
+  getFinancialDashboardKPIs: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.FINANCIAL_DASHBOARD_KPIS);
+  },
+
+  // Step 8: Business Reports & Analytics
+  getReportDashboardKPIs: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_DASHBOARD_KPIS, filters);
+  },
+
+  getReportChartsData: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CHARTS_DATA, filters);
+  },
+
+  getSalesReportSummary: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_SALES_SUMMARY, filters);
+  },
+
+  getSalesInvoiceReportList: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_SALES_INVOICE_LIST, filters);
+  },
+
+  getProductSalesReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PRODUCT_SALES, filters);
+  },
+
+  getCategorySalesReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CATEGORY_SALES, filters);
+  },
+
+  getCustomerSalesReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CUSTOMER_SALES, filters);
+  },
+
+  getPaymentCollectionReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PAYMENT_COLLECTIONS, filters);
+  },
+
+  getPurchaseReportSummary: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PURCHASE_SUMMARY, filters);
+  },
+
+  getPurchaseInvoiceReportList: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PURCHASE_INVOICE_LIST, filters);
+  },
+
+  getProductPurchaseReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PRODUCT_PURCHASES, filters);
+  },
+
+  getSupplierReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_SUPPLIER_REPORT, filters);
+  },
+
+  getInventoryCurrentStockReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CURRENT_STOCK, filters);
+  },
+
+  getLowStockReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_LOW_STOCK, filters);
+  },
+
+  getOutOfStockReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_OUT_OF_STOCK, filters);
+  },
+
+  getStockMovementsReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_STOCK_MOVEMENTS, filters);
+  },
+
+  getInventoryValuationReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_INVENTORY_VALUATION, filters);
+  },
+
+  getStockAdjustmentsReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_STOCK_ADJUSTMENTS, filters);
+  },
+
+  getProfitLossReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_PROFIT_LOSS, filters);
+  },
+
+  getCustomerOutstandingReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CUSTOMER_OUTSTANDING, filters);
+  },
+
+  getSupplierOutstandingReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_SUPPLIER_OUTSTANDING, filters);
+  },
+
+  getExpenseSummaryReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_EXPENSE_SUMMARY, filters);
+  },
+
+  getCashbookReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_CASHBOOK, filters);
+  },
+
+  getRegisterClosingReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_REGISTER_CLOSINGS, filters);
+  },
+
+  getTaxSummaryReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.REPORTS_GET_TAX_SUMMARY, filters);
+  },
+
+  // Step 9: Roles & Permissions
+  createRole: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.ROLES_CREATE, dto);
+  },
+
+  updateRole: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.ROLES_UPDATE, { id, dto });
+  },
+
+  deleteRole: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.ROLES_DELETE, id);
+  },
+
+  getRolesMatrix: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.ROLES_GET_MATRIX);
+  },
+
+  updateRolePermissions: async (roleId: string, permissionCodes: string[]): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.ROLES_UPDATE_PERMISSIONS, { roleId, permissionCodes });
+  },
+
+  listAllPermissions: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PERMISSIONS_LIST_ALL);
+  },
+
+  // Step 9: Settings management
+  resetDefaultSettings: async (): Promise<ApiResponse<Record<string, string>>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_RESET_DEFAULTS);
+  },
+
+  // Step 9: Backup & Restore
+  createBackup: async (destinationDir?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.BACKUP_CREATE, destinationDir);
+  },
+
+  restoreBackup: async (filePath: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.BACKUP_RESTORE, filePath);
+  },
+
+  listBackups: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.BACKUP_LIST);
+  },
+
+  chooseBackupDirectory: async (): Promise<ApiResponse<string | null>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.BACKUP_CHOOSE_DIRECTORY);
+  },
+
+  chooseBackupFile: async (): Promise<ApiResponse<string | null>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.BACKUP_CHOOSE_FILE);
+  },
+
+  // Step 9: System & Hardware
+  getSystemInfoDetailed: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_GET_INFO_DETAILED);
+  },
+
+  getLogsPath: async (): Promise<ApiResponse<string>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_GET_LOGS_PATH);
+  },
+
+  openLogsFolder: async (): Promise<ApiResponse<boolean>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_OPEN_LOGS_FOLDER);
+  },
+
+  listAvailablePrinters: async (): Promise<ApiResponse<string[]>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PRINTER_LIST_AVAILABLE);
+  },
+
+  testPrint: async (printerName?: string, format?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PRINTER_TEST_PRINT, { printerName, format });
+  },
+
+  // Step 10: Licensing & Activation
+  getLicenseStatus: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_GET_STATUS);
+  },
+
+  generateActivationRequest: async (customerName?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_GENERATE_REQUEST, customerName);
+  },
+
+  exportActivationRequest: async (customerName?: string, targetPath?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_EXPORT_REQUEST, customerName, targetPath);
+  },
+
+  importLicenseFile: async (filePath?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_IMPORT_FILE, filePath);
+  },
+
+  activateLicenseContent: async (licenseFileContent: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_ACTIVATE_KEY, licenseFileContent);
+  },
+
+  deactivateLicense: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_DEACTIVATE);
+  },
+
+  chooseLicenseFile: async (): Promise<ApiResponse<string | null>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_CHOOSE_FILE);
+  },
 };
 
 // Expose safe, strictly typed API to renderer via contextBridge

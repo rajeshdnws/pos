@@ -6,8 +6,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Boxes,
-  Layers,
-  Building2,
   ArrowLeftRight,
   ShieldCheck,
   RefreshCw,
@@ -15,6 +13,8 @@ import {
   ShoppingCart,
   CreditCard,
   RotateCcw,
+  Users,
+  Receipt,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import { DemoDataStatus } from '@rs-inventory/types';
@@ -36,9 +36,11 @@ export const DataManagementPage: React.FC = () => {
       const res = await window.rsInventory.getDemoDataStatus();
       if (res.success && res.data) {
         setStatus(res.data);
+      } else {
+        notify('error', res.error?.message || 'Failed to load demo data status');
       }
     } catch {
-      notify('error', 'Failed to fetch demo data status.');
+      notify('error', 'Communication error with background service.');
     } finally {
       setIsLoading(false);
     }
@@ -49,33 +51,33 @@ export const DataManagementPage: React.FC = () => {
   }, []);
 
   const handleInstall = async () => {
-    setShowInstallModal(false);
     setIsInstalling(true);
+    setShowInstallModal(false);
     try {
       const res = await window.rsInventory.installDemoData();
-      if (res.success && res.data) {
-        notify('success', res.data.message || 'Demo data installed successfully!');
+      if (res.success) {
+        notify('success', res.data?.message || 'Demo dataset installed successfully!');
         await fetchStatus();
       } else {
-        notify('error', res.error?.message || 'Failed to install demo data.');
+        notify('error', res.error?.message || 'Failed to install demo dataset.');
       }
     } catch {
-      notify('error', 'An unexpected error occurred during demo data installation.');
+      notify('error', 'An unexpected error occurred while installing demo data.');
     } finally {
       setIsInstalling(false);
     }
   };
 
   const handleClear = async () => {
-    setShowClearModal(false);
     setIsClearing(true);
+    setShowClearModal(false);
     try {
       const res = await window.rsInventory.clearDemoData();
-      if (res.success && res.data) {
-        notify('success', res.data.message || 'Demo data cleared successfully!');
+      if (res.success) {
+        notify('success', res.data?.message || 'Demo dataset cleared successfully!');
         await fetchStatus();
       } else {
-        notify('error', res.error?.message || 'Failed to clear demo data.');
+        notify('error', res.error?.message || 'Failed to clear demo dataset.');
       }
     } catch {
       notify('error', 'An unexpected error occurred while clearing demo data.');
@@ -161,6 +163,33 @@ export const DataManagementPage: React.FC = () => {
 
           <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
             <span className="block text-lg font-bold text-white">
+              {status?.demoCustomersCount || 0}
+            </span>
+            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
+              <Users className="h-3 w-3 text-teal-400" /> Customers
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
+            <span className="block text-lg font-bold text-white">
+              {status?.demoSalesCount || 0}
+            </span>
+            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
+              <Receipt className="h-3 w-3 text-emerald-400" /> Sales
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
+            <span className="block text-lg font-bold text-white">
+              {(status?.demoSalesPaymentsCount || 0) + (status?.demoPaymentsCount || 0)}
+            </span>
+            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
+              <CreditCard className="h-3 w-3 text-amber-400" /> Payments
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
+            <span className="block text-lg font-bold text-white">
               {status?.demoSuppliersCount || 0}
             </span>
             <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
@@ -179,37 +208,10 @@ export const DataManagementPage: React.FC = () => {
 
           <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
             <span className="block text-lg font-bold text-white">
-              {status?.demoPaymentsCount || 0}
+              {(status?.demoSalesReturnsCount || 0) + (status?.demoReturnsCount || 0)}
             </span>
             <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
-              <CreditCard className="h-3 w-3 text-emerald-400" /> Payments
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
-            <span className="block text-lg font-bold text-white">
-              {status?.demoReturnsCount || 0}
-            </span>
-            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
-              <RotateCcw className="h-3 w-3 text-amber-400" /> Returns
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
-            <span className="block text-lg font-bold text-white">
-              {status?.demoCategoriesCount || 0}
-            </span>
-            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
-              <Layers className="h-3 w-3 text-emerald-400" /> Categories
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-surface-950/60 border border-surface-800/80 text-center">
-            <span className="block text-lg font-bold text-white">
-              {status?.demoBrandsCount || 0}
-            </span>
-            <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mt-0.5">
-              <Building2 className="h-3 w-3 text-cyan-400" /> Brands
+              <RotateCcw className="h-3 w-3 text-rose-400" /> Returns
             </span>
           </div>
 
@@ -237,7 +239,7 @@ export const DataManagementPage: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Populates your store with a curated Indian retail catalog, suppliers, and purchase vouchers to test inventory, billing, vendor ledgers, and debit notes.
+              Populates your store with a curated Indian retail catalog, customers, POS invoices, suppliers, and purchase vouchers to test inventory, billing, vendor ledgers, and debit notes.
             </p>
 
             <ul className="space-y-2 pt-2 text-xs text-slate-400">
@@ -247,11 +249,15 @@ export const DataManagementPage: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-brand-400 shrink-0 mt-0.5" />
-                <span><strong>3 Verified Suppliers</strong>: FMCG Distributor, Electronics Wholesaler, and Dairy Agro Co. with GSTINs & opening payables.</span>
+                <span><strong>5 Retail Customers & POS Billing</strong>: Walk-in cash POS, UPI instant pay, Ramesh Sharma Khata credit, interstate IGST invoice, and draft cart.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-brand-400 shrink-0 mt-0.5" />
-                <span><strong>Complete Purchase Cycle</strong>: Posted purchases, draft PO, partial payment with supplier ledger entries, and sample debit return.</span>
+                <span><strong>Customer Payments & Returns</strong>: On-invoice settlements, PhonePe Khata payments, and unopened product returns with stock auto-restoration.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400 shrink-0 mt-0.5" />
+                <span><strong>3 Verified Suppliers & Purchases</strong>: FMCG Distributor, Electronics Wholesaler, and Dairy Agro with supplier ledgers & debit returns.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-brand-400 shrink-0 mt-0.5" />

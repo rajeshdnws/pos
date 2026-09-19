@@ -6,17 +6,30 @@ import { PermissionGuard } from '../components/PermissionGuard';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SetupWizardPage } from '../pages/SetupWizardPage';
 import { LoginPage } from '../pages/LoginPage';
-import { ComingSoonPage } from '../pages/ComingSoonPage';
 import { SettingsIndexPage } from '../pages/settings/SettingsIndexPage';
 import { UserProfilePage } from '../pages/settings/UserProfilePage';
 import { BusinessProfilePage } from '../pages/settings/BusinessProfilePage';
+import { InvoiceSettingsPage } from '../pages/settings/InvoiceSettingsPage';
+import { CurrencySettingsPage } from '../pages/settings/CurrencySettingsPage';
+import { TaxPricingSettingsPage } from '../pages/settings/TaxPricingSettingsPage';
+import { InventoryPreferencesPage } from '../pages/settings/InventoryPreferencesPage';
 import { UserManagementPage } from '../pages/settings/UserManagementPage';
+import { RolesPermissionsPage } from '../pages/settings/RolesPermissionsPage';
 import { ApplicationSettingsPage } from '../pages/settings/ApplicationSettingsPage';
+import { BackupRestorePage } from '../pages/settings/BackupRestorePage';
+import { SecurityAuditPage } from '../pages/settings/SecurityAuditPage';
+import { AboutPage } from '../pages/settings/AboutPage';
 import { DataManagementPage } from '../pages/settings/DataManagementPage';
+import { LicenseActivationPage } from '../pages/settings/LicenseActivationPage';
 import { ProductsIndexPage } from '../pages/products/ProductsIndexPage';
 import { InventoryIndexPage } from '../pages/inventory/InventoryIndexPage';
 import { PurchasesIndexPage } from '../pages/purchases/PurchasesIndexPage';
 import { SuppliersIndexPage } from '../pages/suppliers/SuppliersIndexPage';
+import { SalesIndexPage } from '../pages/sales/SalesIndexPage';
+import { CustomersIndexPage } from '../pages/customers/CustomersIndexPage';
+import { ExpensesIndexPage } from '../pages/expenses/ExpensesIndexPage';
+import { CashRegisterIndexPage } from '../pages/cash-register/CashRegisterIndexPage';
+import { ReportsIndexPage } from '../pages/reports/ReportsIndexPage';
 import { useAuthStore } from '../store/authStore';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
@@ -81,7 +94,7 @@ export const AppRoutes: React.FC = () => {
 
           {/* Settings Section with Tabs */}
           <Route path="/settings" element={<SettingsIndexPage />}>
-            <Route index element={<Navigate to="/settings/profile" replace />} />
+            <Route index element={<Navigate to="/settings/business" replace />} />
             <Route path="profile" element={<UserProfilePage />} />
             <Route
               path="business"
@@ -95,13 +108,79 @@ export const AppRoutes: React.FC = () => {
               }
             />
             <Route
+              path="license"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Product Licensing & Activation" />}
+                >
+                  <LicenseActivationPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="invoice"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Invoice & Printing Preferences" />}
+                >
+                  <InvoiceSettingsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="currency"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Currency & Number Formatting" />}
+                >
+                  <CurrencySettingsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="tax-pricing"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Tax & Pricing Preferences" />}
+                >
+                  <TaxPricingSettingsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="inventory"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Inventory & Stock Preferences" />}
+                >
+                  <InventoryPreferencesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
               path="users"
               element={
                 <PermissionGuard
                   permission="users.view"
-                  fallback={<AccessDeniedFallback moduleName="User & Role Management" />}
+                  fallback={<AccessDeniedFallback moduleName="User Management" />}
                 >
                   <UserManagementPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="roles"
+              element={
+                <PermissionGuard
+                  permission="users.view"
+                  fallback={<AccessDeniedFallback moduleName="Roles & Permissions Matrix" />}
+                >
+                  <RolesPermissionsPage />
                 </PermissionGuard>
               }
             />
@@ -116,6 +195,29 @@ export const AppRoutes: React.FC = () => {
                 </PermissionGuard>
               }
             />
+            <Route
+              path="backup"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Database Backup & Recovery" />}
+                >
+                  <BackupRestorePage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="security-audit"
+              element={
+                <PermissionGuard
+                  permission="settings.view"
+                  fallback={<AccessDeniedFallback moduleName="Security, Session & Audit Logs" />}
+                >
+                  <SecurityAuditPage />
+                </PermissionGuard>
+              }
+            />
+            <Route path="about" element={<AboutPage />} />
             <Route
               path="data"
               element={
@@ -155,18 +257,14 @@ export const AppRoutes: React.FC = () => {
           />
 
           <Route
-            path="/sales"
+            path="/sales/*"
             element={
-              <ComingSoonPage
-                moduleName="Billing & Point of Sale (POS)"
-                description="High-speed barcode billing, invoice generation, GST tax computation, and receipt printing."
-                plannedFeatures={[
-                  'Keyboard-optimized POS checkout interface',
-                  'Thermal 58mm/80mm instant receipt printing',
-                  'Split payments (Cash, UPI, Card, Credit)',
-                  'Sales returns & credit note generation',
-                ]}
-              />
+              <PermissionGuard
+                permission="sales.view"
+                fallback={<AccessDeniedFallback moduleName="Sales & POS Billing" />}
+              >
+                <SalesIndexPage />
+              </PermissionGuard>
             }
           />
 
@@ -183,20 +281,15 @@ export const AppRoutes: React.FC = () => {
             }
           />
 
-
           <Route
-            path="/customers"
+            path="/customers/*"
             element={
-              <ComingSoonPage
-                moduleName="Customer & Khata Ledger"
-                description="Track retail customer profiles, credit limits, outstanding balances, and khata ledger."
-                plannedFeatures={[
-                  'Credit customer khata ledger tracking',
-                  'Payment receipts (Cash / UPI) recording',
-                  'Payment reminder SMS / WhatsApp ready',
-                  'Customer transaction history',
-                ]}
-              />
+              <PermissionGuard
+                permission="customers.view"
+                fallback={<AccessDeniedFallback moduleName="Customer Directory & Khata Ledger" />}
+              >
+                <CustomersIndexPage />
+              </PermissionGuard>
             }
           />
 
@@ -213,18 +306,38 @@ export const AppRoutes: React.FC = () => {
           />
 
           <Route
+            path="/expenses/*"
+            element={
+              <PermissionGuard
+                permission="expense.view"
+                fallback={<AccessDeniedFallback moduleName="Expenses & Cash Outflows" />}
+              >
+                <ExpensesIndexPage />
+              </PermissionGuard>
+            }
+          />
+
+          <Route
+            path="/cash-register/*"
+            element={
+              <PermissionGuard
+                permission="cashRegister.view"
+                fallback={<AccessDeniedFallback moduleName="Cash Register & Day-End Closing" />}
+              >
+                <CashRegisterIndexPage />
+              </PermissionGuard>
+            }
+          />
+
+          <Route
             path="/reports"
             element={
-              <ComingSoonPage
-                moduleName="Business Analytics & GST Reports"
-                description="Comprehensive sales, purchase, stock valuation, and GST GSTR-1 / GSTR-3B export reports."
-                plannedFeatures={[
-                  'Daily sales & profit margins overview',
-                  'GSTR-1 B2B / B2C invoice export',
-                  'Current inventory valuation report',
-                  'Cash flow and expense summary',
-                ]}
-              />
+              <PermissionGuard
+                permission="reports.view"
+                fallback={<AccessDeniedFallback moduleName="Business Reports & Analytics" />}
+              >
+                <ReportsIndexPage />
+              </PermissionGuard>
             }
           />
 

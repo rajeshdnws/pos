@@ -5,6 +5,7 @@ import { PasswordService } from '../utils/password.js';
 import { ValidationUtils } from '../utils/validation.js';
 import { DEFAULT_APP_SETTINGS } from './settings.service.js';
 import { ROLE_PERMISSION_MAP, SYSTEM_PERMISSIONS } from './permission.service.js';
+import { DEFAULT_EXPENSE_CATEGORIES } from './expense-category.service.js';
 
 export class CompanyService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -227,6 +228,28 @@ export class CompanyService {
           isActive: true,
         },
       });
+
+      // 2e-iv. Seed Default Cash Register
+      await tx.cashRegister.create({
+        data: {
+          companyId: companyRecord.id,
+          registerCode: 'REG-MAIN',
+          name: 'Main Counter',
+          isActive: true,
+        },
+      });
+
+      // 2e-v. Seed Default Expense Categories
+      for (const catName of DEFAULT_EXPENSE_CATEGORIES) {
+        await tx.expenseCategory.create({
+          data: {
+            companyId: companyRecord.id,
+            name: catName,
+            isActive: true,
+            createdBy: adminUser.id,
+          },
+        });
+      }
 
       // 2f. Record Audit Log
       await tx.auditLog.create({

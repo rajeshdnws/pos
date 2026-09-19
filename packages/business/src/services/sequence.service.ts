@@ -105,6 +105,97 @@ export class SequenceService {
           const match = lastSupplier.supplierCode.match(/\d+$/);
           if (match) return parseInt(match[0], 10);
         }
+      } else if (prefix === 'CUST') {
+        const lastCustomer = await client.customer.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { customerCode: true },
+        });
+        if (lastCustomer?.customerCode) {
+          const match = lastCustomer.customerCode.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'SPAY') {
+        const last = await client.salesPayment.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { paymentNumber: true },
+        });
+        if (last?.paymentNumber) {
+          const match = last.paymentNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'SR') {
+        const last = await client.salesReturn.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { returnNumber: true },
+        });
+        if (last?.returnNumber) {
+          const match = last.returnNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'EXP') {
+        const last = await client.expense.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { expenseNumber: true },
+        });
+        if (last?.expenseNumber) {
+          const match = last.expenseNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'REG') {
+        const last = await client.cashRegister.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { registerCode: true },
+        });
+        if (last?.registerCode) {
+          const match = last.registerCode.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'SES') {
+        const last = await client.cashRegisterSession.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { sessionNumber: true },
+        });
+        if (last?.sessionNumber) {
+          const match = last.sessionNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'MOV') {
+        const last = await client.cashMovement.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { movementNumber: true },
+        });
+        if (last?.movementNumber) {
+          const match = last.movementNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else if (prefix === 'CLS') {
+        const last = await client.dayEndClosing.findFirst({
+          where: { companyId },
+          orderBy: { createdAt: 'desc' },
+          select: { closingNumber: true },
+        });
+        if (last?.closingNumber) {
+          const match = last.closingNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
+      } else {
+        // For INV or any custom company invoice prefix: look in salesInvoices
+        const last = await client.salesInvoice.findFirst({
+          where: { companyId, invoiceNumber: { startsWith: prefix } },
+          orderBy: { createdAt: 'desc' },
+          select: { invoiceNumber: true },
+        });
+        if (last?.invoiceNumber) {
+          const match = last.invoiceNumber.match(/\d+$/);
+          if (match) return parseInt(match[0], 10);
+        }
       }
     } catch {
       // Fallback

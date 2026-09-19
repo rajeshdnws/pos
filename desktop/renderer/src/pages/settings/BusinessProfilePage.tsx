@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, Upload, Save, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useCompanyStore } from '../../store/companyStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useNotificationStore } from '../../store/notificationStore';
 
 const INDIAN_STATES = [
@@ -58,6 +59,7 @@ const BUSINESS_TYPES = [
 
 export const BusinessProfilePage: React.FC = () => {
   const { company, fetchCompany, updateCompany } = useCompanyStore();
+  const { settings, fetchSettings, updateSettings } = useSettingsStore();
   const { notify } = useNotificationStore();
 
   const [formData, setFormData] = useState({
@@ -66,6 +68,7 @@ export const BusinessProfilePage: React.FC = () => {
     ownerName: '',
     phone: '',
     email: '',
+    website: '',
     address: '',
     city: '',
     state: 'Tamil Nadu',
@@ -75,13 +78,16 @@ export const BusinessProfilePage: React.FC = () => {
     pan: '',
     invoicePrefix: 'INV',
     logoPath: '',
+    invoiceFooterText: '',
+    invoiceTermsAndConditions: '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchCompany();
-  }, [fetchCompany]);
+    fetchSettings();
+  }, [fetchCompany, fetchSettings]);
 
   useEffect(() => {
     if (company) {
@@ -91,6 +97,7 @@ export const BusinessProfilePage: React.FC = () => {
         ownerName: company.ownerName || '',
         phone: company.phone || company.mobile || '',
         email: company.email || '',
+        website: settings.website || '',
         address: company.address || '',
         city: company.city || '',
         state: company.state || 'Tamil Nadu',
@@ -100,11 +107,17 @@ export const BusinessProfilePage: React.FC = () => {
         pan: company.pan || '',
         invoicePrefix: company.invoicePrefix || 'INV',
         logoPath: company.logoPath || '',
+        invoiceFooterText: settings.invoiceFooterText || 'Thank you for your business! Visit again.',
+        invoiceTermsAndConditions:
+          settings.invoiceTermsAndConditions ||
+          '1. Goods once sold will not be taken back without valid bill.\n2. Warranty as per manufacturer terms.\n3. Subject to local jurisdiction.',
       });
     }
-  }, [company]);
+  }, [company, settings]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -134,17 +147,37 @@ export const BusinessProfilePage: React.FC = () => {
     }
 
     setIsSaving(true);
-    const res = await updateCompany({
-      ...formData,
-      name: formData.businessName,
-      mobile: formData.phone,
-    });
+    const [companyRes] = await Promise.all([
+      updateCompany({
+        name: formData.businessName,
+        businessName: formData.businessName,
+        businessType: formData.businessType,
+        ownerName: formData.ownerName,
+        phone: formData.phone,
+        mobile: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        gstRegistered: formData.gstRegistered,
+        gstin: formData.gstin,
+        pan: formData.pan,
+        invoicePrefix: formData.invoicePrefix,
+        logoPath: formData.logoPath,
+      }),
+      updateSettings({
+        website: formData.website,
+        invoiceFooterText: formData.invoiceFooterText,
+        invoiceTermsAndConditions: formData.invoiceTermsAndConditions,
+      }),
+    ]);
     setIsSaving(false);
 
-    if (res.success) {
+    if (companyRes.success) {
       notify('success', 'Business Profile updated successfully.');
     } else {
-      notify('error', res.error || 'Failed to update business profile.');
+      notify('error', companyRes.error || 'Failed to update business profile.');
     }
   };
 
@@ -196,7 +229,7 @@ export const BusinessProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Owner Name</label>
               <input
@@ -229,6 +262,18 @@ export const BusinessProfilePage: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                className="w-full px-3.5 py-2 rounded-xl bg-surface-950 border border-surface-700 text-slate-100 text-xs focus:outline-none focus:border-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Website</label>
+              <input
+                type="text"
+                name="website"
+                value={formData.website}
+                onChange={handleChange}
+                placeholder="https://company.com"
                 className="w-full px-3.5 py-2 rounded-xl bg-surface-950 border border-surface-700 text-slate-100 text-xs focus:outline-none focus:border-brand-500"
               />
             </div>
@@ -346,6 +391,39 @@ export const BusinessProfilePage: React.FC = () => {
                 onChange={handleChange}
                 placeholder="INV"
                 className="w-full font-mono uppercase px-3.5 py-2 rounded-xl bg-surface-950 border border-surface-700 text-slate-100 text-xs focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Invoice Footer Note & Terms */}
+        <div className="rounded-2xl bg-surface-900/70 border border-surface-800 p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-white">Invoice Footer & Standard Terms</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Receipt Footer Greeting
+              </label>
+              <input
+                type="text"
+                name="invoiceFooterText"
+                value={formData.invoiceFooterText}
+                onChange={handleChange}
+                placeholder="Thank you for your business! Visit again."
+                className="w-full px-3.5 py-2 rounded-xl bg-surface-950 border border-surface-700 text-slate-100 text-xs focus:outline-none focus:border-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Standard Terms & Conditions
+              </label>
+              <textarea
+                name="invoiceTermsAndConditions"
+                rows={3}
+                value={formData.invoiceTermsAndConditions}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2 rounded-xl bg-surface-950 border border-surface-700 text-slate-100 text-xs focus:outline-none focus:border-brand-500 resize-none"
               />
             </div>
           </div>

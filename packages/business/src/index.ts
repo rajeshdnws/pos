@@ -15,6 +15,12 @@ export * from './repositories/supplier-ledger.repository.js';
 export * from './repositories/purchase.repository.js';
 export * from './repositories/purchase-payment.repository.js';
 export * from './repositories/purchase-return.repository.js';
+// Step 6: Sales repositories
+export * from './repositories/customer.repository.js';
+export * from './repositories/customer-ledger.repository.js';
+export * from './repositories/sales-invoice.repository.js';
+export * from './repositories/sales-payment.repository.js';
+export * from './repositories/sales-return.repository.js';
 export * from './services/app-services.js';
 export * from './services/auth.service.js';
 export * from './services/company.service.js';
@@ -39,8 +45,39 @@ export * from './services/supplier-ledger.service.js';
 export * from './services/purchase.service.js';
 export * from './services/purchase-payment.service.js';
 export * from './services/purchase-return.service.js';
+// Step 6: Sales services
+export * from './services/sales-calculation.service.js';
+export * from './services/customer.service.js';
+export * from './services/sales.service.js';
+export * from './services/sales-payment.service.js';
+export * from './services/sales-return.service.js';
+// Step 7: Repositories
+export * from './repositories/expense-category.repository.js';
+export * from './repositories/expense.repository.js';
+export * from './repositories/cash-register.repository.js';
+export * from './repositories/cash-register-session.repository.js';
+export * from './repositories/cash-movement.repository.js';
+export * from './repositories/day-end-closing.repository.js';
+// Step 7: Services
+export * from './services/expense-category.service.js';
+export * from './services/expense.service.js';
+export * from './services/cash-register.service.js';
+export * from './services/cashbook.service.js';
+export * from './services/day-end-closing.service.js';
+export * from './services/financial-dashboard.service.js';
 export * from './utils/password.js';
 export * from './utils/validation.js';
 export * from './utils/currency.js';
 export * from './utils/datetime.js';
-
+// Step 8: Reporting
+export * from './repositories/reporting.repository.js';
+export * from './services/sales-report.service.js';
+export * from './services/purchase-report.service.js';
+export * from './services/inventory-report.service.js';
+export * from './services/profit-loss-report.service.js';
+export * from './services/receivables-payables-report.service.js';
+export * from './services/cash-report.service.js';
+export * from './services/tax-report.service.js';
+export * from './services/reporting.service.js';
+// Step 10: Licensing & Activation
+export * from './services/license.service.js';

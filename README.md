@@ -192,7 +192,9 @@ Open Prisma Studio to inspect local records:
 ```bash
 npm run db:studio
 ```
-
+```bash
+npm run db:push --workspace=@rs-inventory/database
+```
 ---
 
 ## 9. Running Development Version

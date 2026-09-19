@@ -25,6 +25,10 @@ export class DemoDataService {
       demoPurchasesCount,
       demoPaymentsCount,
       demoReturnsCount,
+      demoCustomersCount,
+      demoSalesCount,
+      demoSalesPaymentsCount,
+      demoSalesReturnsCount,
     ] = await Promise.all([
       this.prisma.product.count({
         where: {
@@ -99,6 +103,42 @@ export class DemoDataService {
           ],
         },
       }),
+      this.prisma.customer.count({
+        where: {
+          companyId,
+          OR: [
+            { customerCode: { startsWith: 'CUST-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+      }),
+      this.prisma.salesInvoice.count({
+        where: {
+          companyId,
+          OR: [
+            { invoiceNumber: { startsWith: 'INV-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+      }),
+      this.prisma.salesPayment.count({
+        where: {
+          companyId,
+          OR: [
+            { paymentNumber: { startsWith: 'SPAY-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+      }),
+      this.prisma.salesReturn.count({
+        where: {
+          companyId,
+          OR: [
+            { returnNumber: { startsWith: 'SR-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+      }),
     ]);
 
     const latestDemoProduct = await this.prisma.product.findFirst({
@@ -114,7 +154,9 @@ export class DemoDataService {
       hasDemoData:
         demoProductsCount > 0 ||
         demoSuppliersCount > 0 ||
-        demoPurchasesCount > 0,
+        demoPurchasesCount > 0 ||
+        demoCustomersCount > 0 ||
+        demoSalesCount > 0,
       demoProductsCount,
       demoCategoriesCount,
       demoBrandsCount,
@@ -124,6 +166,10 @@ export class DemoDataService {
       demoPurchasesCount,
       demoPaymentsCount,
       demoReturnsCount,
+      demoCustomersCount,
+      demoSalesCount,
+      demoSalesPaymentsCount,
+      demoSalesReturnsCount,
       installedAt: latestDemoProduct ? latestDemoProduct.createdAt.toISOString() : null,
     };
   }
@@ -573,7 +619,18 @@ export class DemoDataService {
 
       let productsCreated = 0;
       let movementsCreated = 0;
-      const createdProducts: Array<{ id: string; name: string; sku: string; cost: number; taxRate: number; unitCode: string }> = [];
+      const createdProducts: Array<{
+        id: string;
+        name: string;
+        sku: string;
+        cost: number;
+        taxRate: number;
+        unitCode: string;
+        sellingPrice: number;
+        mrp: number;
+        hsnCode?: string | null;
+        barcode?: string | null;
+      }> = [];
 
       for (const p of demoProductsData) {
         let existing = await tx.product.findFirst({
@@ -660,6 +717,10 @@ export class DemoDataService {
           cost: existing.purchasePrice,
           taxRate: existing.taxRate,
           unitCode: p.unit,
+          sellingPrice: existing.sellingPrice,
+          mrp: existing.mrp,
+          hsnCode: existing.hsnCode,
+          barcode: existing.barcode,
         });
       }
 
@@ -1097,7 +1158,6 @@ export class DemoDataService {
       if (createdProducts.length >= 5 && sup1 && sup2 && sup3) {
         const prodTea = createdProducts[0]!; // Tata Tea (240 cost, 5% tax)
         const prodRedBull = createdProducts[1]!; // Red Bull (95 cost, 18% tax)
-        const prodMaggi = createdProducts[2]!; // Maggi (42 cost, 12% tax)
         const prodCookies = createdProducts[3]!; // Britannia Cookies (38 cost, 18% tax)
         const prodBoat = createdProducts[8] || createdProducts[0]!; // boAt Earphones (950 cost, 18% tax)
 
@@ -1602,9 +1662,1446 @@ export class DemoDataService {
             });
           }
         }
-      }  }
+      }
 
-      // 13. Audit Log
+      // 13. Create Demo Customers
+      let customersCreated = 0;
+      const demoCustomersData = [
+        {
+          customerCode: 'CUST-DEMO-001',
+          name: 'Ramesh Sharma',
+          contactPerson: 'Ramesh Sharma',
+          phone: '9820198201',
+          email: 'ramesh.sharma@example.com',
+          customerType: 'INDIVIDUAL',
+          addressLine1: 'B-204, Gokul Dham Society, Borivali West',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pinCode: '400092',
+          registrationType: 'CONSUMER',
+          openingBalance: 2500,
+          openingBalanceType: 'RECEIVABLE',
+          creditLimit: 10000,
+          creditPeriodDays: 30,
+          notes: 'Loyal neighborhood customer with active Khata credit [DEMO_DATA]',
+        },
+        {
+          customerCode: 'CUST-DEMO-002',
+          name: 'Pooja Verma',
+          contactPerson: 'Pooja Verma',
+          phone: '9811234567',
+          email: 'pooja.verma@example.com',
+          customerType: 'INDIVIDUAL',
+          addressLine1: 'Flat 402, Sunshine Heights, Andheri East',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pinCode: '400069',
+          registrationType: 'CONSUMER',
+          openingBalance: 0,
+          openingBalanceType: 'RECEIVABLE',
+          creditLimit: 0,
+          creditPeriodDays: 0,
+          notes: 'Regular walk-in retail counter shopper [DEMO_DATA]',
+        },
+        {
+          customerCode: 'CUST-DEMO-003',
+          name: 'Apex Corporate Supplies',
+          contactPerson: 'Rajesh Gupta',
+          phone: '9892098920',
+          email: 'purchase@apexcorporate.in',
+          customerType: 'BUSINESS',
+          addressLine1: 'Plot 45, MIDC Industrial Area, Hinjewadi Phase 1',
+          city: 'Pune',
+          state: 'Maharashtra',
+          pinCode: '411057',
+          gstin: '27AABCA1234F1Z5',
+          registrationType: 'REGULAR',
+          openingBalance: 0,
+          openingBalanceType: 'RECEIVABLE',
+          creditLimit: 50000,
+          creditPeriodDays: 45,
+          notes: 'Corporate pantry & supplies B2B client [DEMO_DATA]',
+        },
+        {
+          customerCode: 'CUST-DEMO-004',
+          name: 'Vikram Electronics & Retail',
+          contactPerson: 'Vikram Singh',
+          phone: '9910099100',
+          email: 'vikram.singh@velretail.com',
+          customerType: 'BUSINESS',
+          addressLine1: 'Shop 12, Galleria Market, DLF Phase 4',
+          city: 'Gurugram',
+          state: 'Haryana',
+          pinCode: '122002',
+          gstin: '06ABCDE1234F1Z2',
+          registrationType: 'REGULAR',
+          openingBalance: 0,
+          openingBalanceType: 'RECEIVABLE',
+          creditLimit: 25000,
+          creditPeriodDays: 15,
+          notes: 'Interstate trade customer for IGST sales [DEMO_DATA]',
+        },
+        {
+          customerCode: 'CUST-DEMO-005',
+          name: 'Anita Desai',
+          contactPerson: 'Anita Desai',
+          phone: '9845098450',
+          email: 'anita.desai@example.com',
+          customerType: 'INDIVIDUAL',
+          addressLine1: '14, Silver Oak Apartments, Bandra West',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pinCode: '400050',
+          registrationType: 'CONSUMER',
+          openingBalance: 650,
+          openingBalanceType: 'RECEIVABLE',
+          creditLimit: 5000,
+          creditPeriodDays: 15,
+          notes: 'Local customer with small running credit balance [DEMO_DATA]',
+        },
+      ];
+
+      const customerMap: Record<string, any> = {};
+      for (const c of demoCustomersData) {
+        let cust = await tx.customer.findFirst({
+          where: { companyId, customerCode: c.customerCode },
+        });
+
+        if (!cust) {
+          cust = await tx.customer.create({
+            data: {
+              companyId,
+              customerCode: c.customerCode,
+              name: c.name,
+              contactPerson: c.contactPerson,
+              phone: c.phone,
+              email: c.email,
+              customerType: c.customerType,
+              addressLine1: c.addressLine1,
+              city: c.city,
+              state: c.state,
+              pinCode: c.pinCode,
+              country: 'India',
+              gstin: c.gstin,
+              registrationType: c.registrationType,
+              openingBalance: c.openingBalance,
+              openingBalanceType: c.openingBalanceType,
+              openingBalanceDate: c.openingBalance > 0 ? new Date(Date.now() - 30 * 86400000) : null,
+              creditLimit: c.creditLimit,
+              creditPeriodDays: c.creditPeriodDays,
+              currentBalance: c.openingBalance,
+              notes: c.notes,
+              createdBy: userId || 'SYSTEM',
+            },
+          });
+          customersCreated++;
+
+          if (c.openingBalance > 0) {
+            await tx.customerLedger.create({
+              data: {
+                companyId,
+                customerId: cust.id,
+                entryDate: new Date(Date.now() - 30 * 86400000),
+                transactionType: 'OPENING_BALANCE',
+                referenceType: 'OPENING_BALANCE',
+                debitAmount: c.openingBalance,
+                creditAmount: 0,
+                runningBalance: c.openingBalance,
+                description: `Opening Balance [DEMO_DATA]`,
+                notes: c.notes,
+                createdBy: userId || 'SYSTEM',
+              },
+            });
+          }
+        }
+        customerMap[c.customerCode] = cust;
+      }
+
+      // Map created products by SKU for sales billing
+      const prodMap: Record<string, typeof createdProducts[0]> = {};
+      for (const cp of createdProducts) {
+        prodMap[cp.sku] = cp;
+      }
+
+      let salesCreated = 0;
+      let salesPaymentsCreated = 0;
+      let salesReturnsCreated = 0;
+
+      const cust1 = customerMap['CUST-DEMO-001'];
+      const cust2 = customerMap['CUST-DEMO-002'];
+      const cust4 = customerMap['CUST-DEMO-004'];
+      const cust5 = customerMap['CUST-DEMO-005'];
+
+      const prodTea = prodMap['DEMO-BEV-001']!;
+      const prodRedBull = prodMap['DEMO-BEV-002']!;
+      const prodBiscuits = prodMap['DEMO-SNK-001']!;
+      const prodMaggi = prodMap['DEMO-SNK-002']!;
+      const prodSilk = prodMap['DEMO-SNK-003']!;
+      const prodButter = prodMap['DEMO-DAI-001']!;
+      const prodDal = prodMap['DEMO-DAI-003']!;
+      const prodEarphones = prodMap['DEMO-ELE-001']!;
+      const prodSpeaker = prodMap['DEMO-ELE-002']!;
+      const prodLedBulb = prodMap['DEMO-ELE-003']!;
+      const prodSpiral = prodMap['DEMO-STA-001']!;
+      const prodPack6 = prodMap['DEMO-STA-002']!;
+
+      // 14. Demo Sales Invoices
+      // Invoice 1: INV-DEMO-001 (Cash POS Counter Sale)
+      let inv1 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-001' },
+      });
+      if (!inv1 && cust2) {
+        const teaQty = 2;
+        const teaRate = 265;
+        const teaTaxable = teaQty * teaRate; // 530
+        const teaCgst = teaTaxable * 0.025; // 13.25
+        const teaSgst = teaTaxable * 0.025; // 13.25
+        const teaLineTotal = teaTaxable + teaCgst + teaSgst; // 556.50
+
+        const biscQty = 1;
+        const biscRate = 85;
+        const biscTaxable = biscQty * biscRate; // 85
+        const biscCgst = biscTaxable * 0.025; // 2.125
+        const biscSgst = biscTaxable * 0.025; // 2.125
+        const biscLineTotal = biscTaxable + biscCgst + biscSgst; // 89.25
+
+        const subtotal1 = teaTaxable + biscTaxable; // 615
+        const grandTotal1 = 646.0;
+        const roundOff1 = 0.25;
+
+        inv1 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            invoiceNumber: 'INV-DEMO-001',
+            invoiceType: 'RETAIL',
+            invoiceDate: new Date(Date.now() - 5 * 86400000),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            customerNameSnapshot: cust2.name,
+            customerPhoneSnapshot: cust2.phone,
+            customerAddressSnapshot: `${cust2.addressLine1}, ${cust2.city}`,
+            subtotal: subtotal1,
+            taxableAmount: subtotal1,
+            cgstAmount: 15.38,
+            sgstAmount: 15.37,
+            roundOff: roundOff1,
+            grandTotal: grandTotal1,
+            amountPaid: grandTotal1,
+            amountReturned: 0,
+            paymentStatus: 'PAID',
+            notes: 'Walk-in cash counter sale [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(Date.now() - 5 * 86400000),
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodTea.id,
+                  productNameSnapshot: prodTea.name,
+                  skuSnapshot: prodTea.sku,
+                  barcodeSnapshot: prodTea.barcode,
+                  unitNameSnapshot: prodTea.unitCode,
+                  hsnCodeSnapshot: prodTea.hsnCode,
+                  quantity: teaQty,
+                  sellingRate: teaRate,
+                  taxableAmount: teaTaxable,
+                  taxRate: 5.0,
+                  cgstRate: 2.5,
+                  sgstRate: 2.5,
+                  cgstAmount: 13.25,
+                  sgstAmount: 13.25,
+                  taxAmount: 26.50,
+                  lineTotal: teaLineTotal,
+                  unitCostSnapshot: prodTea.cost,
+                },
+                {
+                  companyId,
+                  productId: prodBiscuits.id,
+                  productNameSnapshot: prodBiscuits.name,
+                  skuSnapshot: prodBiscuits.sku,
+                  barcodeSnapshot: prodBiscuits.barcode,
+                  unitNameSnapshot: prodBiscuits.unitCode,
+                  hsnCodeSnapshot: prodBiscuits.hsnCode,
+                  quantity: biscQty,
+                  sellingRate: biscRate,
+                  taxableAmount: biscTaxable,
+                  taxRate: 5.0,
+                  cgstRate: 2.5,
+                  sgstRate: 2.5,
+                  cgstAmount: 2.13,
+                  sgstAmount: 2.12,
+                  taxAmount: 4.25,
+                  lineTotal: biscLineTotal,
+                  unitCostSnapshot: prodBiscuits.cost,
+                },
+              ],
+            },
+          },
+        });
+        salesCreated++;
+
+        // Stock deductions & movements
+        await tx.stockMovement.createMany({
+          data: [
+            {
+              companyId,
+              productId: prodTea.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -teaQty,
+              unitCost: prodTea.cost,
+              referenceType: 'SALE',
+              referenceId: inv1.id,
+              referenceNumber: inv1.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-001 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodBiscuits.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -biscQty,
+              unitCost: prodBiscuits.cost,
+              referenceType: 'SALE',
+              referenceId: inv1.id,
+              referenceNumber: inv1.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-001 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+          ],
+        });
+        movementsCreated += 2;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodTea.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: teaQty } },
+        });
+        await tx.product.update({
+          where: { id: prodTea.id },
+          data: { currentStock: { decrement: teaQty } },
+        });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodBiscuits.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: biscQty } },
+        });
+        await tx.product.update({
+          where: { id: prodBiscuits.id },
+          data: { currentStock: { decrement: biscQty } },
+        });
+
+        // Payment record
+        const pay1 = await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            salesInvoiceId: inv1.id,
+            paymentNumber: 'SPAY-DEMO-001',
+            paymentDate: inv1.invoiceDate,
+            amount: grandTotal1,
+            paymentMode: 'CASH',
+            status: 'POSTED',
+            notes: 'Cash payment received at counter [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+
+        // Customer Ledger entries
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            entryDate: inv1.invoiceDate,
+            transactionType: 'SALE',
+            referenceType: 'INVOICE',
+            referenceId: inv1.id,
+            referenceNumber: inv1.invoiceNumber,
+            debitAmount: grandTotal1,
+            creditAmount: 0,
+            runningBalance: grandTotal1,
+            description: `Retail POS Sale #${inv1.invoiceNumber} [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            entryDate: inv1.invoiceDate,
+            transactionType: 'PAYMENT',
+            referenceType: 'PAYMENT',
+            referenceId: pay1.id,
+            referenceNumber: pay1.paymentNumber,
+            debitAmount: 0,
+            creditAmount: grandTotal1,
+            runningBalance: 0,
+            description: `Counter Cash Settlement #${pay1.paymentNumber} [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+      }
+
+      // Invoice 2: INV-DEMO-002 (UPI POS Counter Sale)
+      let inv2 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-002' },
+        include: { items: true },
+      });
+      if (!inv2 && cust2) {
+        const rbQty = 4;
+        const rbRate = 120;
+        const rbTaxable = rbQty * rbRate; // 480
+        const rbCgst = rbTaxable * 0.09; // 43.20
+        const rbSgst = rbTaxable * 0.09; // 43.20
+        const rbLineTotal = rbTaxable + rbCgst + rbSgst; // 566.40
+
+        const earQty = 1;
+        const earRate = 499;
+        const earTaxable = earQty * earRate; // 499
+        const earCgst = earTaxable * 0.09; // 44.91
+        const earSgst = earTaxable * 0.09; // 44.91
+        const earLineTotal = earTaxable + earCgst + earSgst; // 588.82
+
+        const subtotal2 = rbTaxable + earTaxable; // 979.00
+        const cgst2 = rbCgst + earCgst; // 88.11
+        const sgst2 = rbSgst + earSgst; // 88.11
+        const grandTotal2 = 1155.00;
+        const roundOff2 = -0.22;
+
+        inv2 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            invoiceNumber: 'INV-DEMO-002',
+            invoiceType: 'RETAIL',
+            invoiceDate: new Date(Date.now() - 3 * 86400000),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            customerNameSnapshot: cust2.name,
+            customerPhoneSnapshot: cust2.phone,
+            customerAddressSnapshot: `${cust2.addressLine1}, ${cust2.city}`,
+            subtotal: subtotal2,
+            taxableAmount: subtotal2,
+            cgstAmount: cgst2,
+            sgstAmount: sgst2,
+            roundOff: roundOff2,
+            grandTotal: grandTotal2,
+            amountPaid: grandTotal2,
+            amountReturned: 0,
+            paymentStatus: 'PAID',
+            notes: 'Quick UPI counter sale [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(Date.now() - 3 * 86400000),
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodRedBull.id,
+                  productNameSnapshot: prodRedBull.name,
+                  skuSnapshot: prodRedBull.sku,
+                  barcodeSnapshot: prodRedBull.barcode,
+                  unitNameSnapshot: prodRedBull.unitCode,
+                  hsnCodeSnapshot: prodRedBull.hsnCode,
+                  quantity: rbQty,
+                  sellingRate: rbRate,
+                  taxableAmount: rbTaxable,
+                  taxRate: 18.0,
+                  cgstRate: 9.0,
+                  sgstRate: 9.0,
+                  cgstAmount: rbCgst,
+                  sgstAmount: rbSgst,
+                  taxAmount: rbCgst + rbSgst,
+                  lineTotal: rbLineTotal,
+                  unitCostSnapshot: prodRedBull.cost,
+                },
+                {
+                  companyId,
+                  productId: prodEarphones.id,
+                  productNameSnapshot: prodEarphones.name,
+                  skuSnapshot: prodEarphones.sku,
+                  barcodeSnapshot: prodEarphones.barcode,
+                  unitNameSnapshot: prodEarphones.unitCode,
+                  hsnCodeSnapshot: prodEarphones.hsnCode,
+                  quantity: earQty,
+                  sellingRate: earRate,
+                  taxableAmount: earTaxable,
+                  taxRate: 18.0,
+                  cgstRate: 9.0,
+                  sgstRate: 9.0,
+                  cgstAmount: earCgst,
+                  sgstAmount: earSgst,
+                  taxAmount: earCgst + earSgst,
+                  lineTotal: earLineTotal,
+                  unitCostSnapshot: prodEarphones.cost,
+                },
+              ],
+            },
+          },
+          include: { items: true },
+        });
+        salesCreated++;
+
+        // Stock deductions & movements
+        await tx.stockMovement.createMany({
+          data: [
+            {
+              companyId,
+              productId: prodRedBull.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -rbQty,
+              unitCost: prodRedBull.cost,
+              referenceType: 'SALE',
+              referenceId: inv2.id,
+              referenceNumber: inv2.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-002 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodEarphones.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -earQty,
+              unitCost: prodEarphones.cost,
+              referenceType: 'SALE',
+              referenceId: inv2.id,
+              referenceNumber: inv2.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-002 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+          ],
+        });
+        movementsCreated += 2;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodRedBull.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: rbQty } },
+        });
+        await tx.product.update({
+          where: { id: prodRedBull.id },
+          data: { currentStock: { decrement: rbQty } },
+        });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodEarphones.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: earQty } },
+        });
+        await tx.product.update({
+          where: { id: prodEarphones.id },
+          data: { currentStock: { decrement: earQty } },
+        });
+
+        // Payment record
+        await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            salesInvoiceId: inv2.id,
+            paymentNumber: 'SPAY-DEMO-002',
+            paymentDate: inv2.invoiceDate,
+            amount: grandTotal2,
+            paymentMode: 'UPI',
+            referenceNo: 'UPI/9876543210/OKAXIS',
+            status: 'POSTED',
+            notes: 'Instant UPI settlement via QR Code [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+      }
+
+      // Invoice 3: INV-DEMO-003 (Khata Credit Sale to Ramesh Sharma)
+      let inv3 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-003' },
+      });
+      if (!inv3 && cust1) {
+        const butterQty = 2;
+        const butterRate = 265;
+        const butterTaxable = butterQty * butterRate; // 530
+        const butterCgst = butterTaxable * 0.06; // 31.80
+        const butterSgst = butterTaxable * 0.06; // 31.80
+        const butterLineTotal = butterTaxable + butterCgst + butterSgst; // 593.60
+
+        const maggiQty = 2;
+        const maggiRate = 55;
+        const maggiTaxable = maggiQty * maggiRate; // 110
+        const maggiCgst = maggiTaxable * 0.06; // 6.60
+        const maggiSgst = maggiTaxable * 0.06; // 6.60
+        const maggiLineTotal = maggiTaxable + maggiCgst + maggiSgst; // 123.20
+
+        const bulbQty = 1;
+        const bulbRate = 110;
+        const bulbTaxable = bulbQty * bulbRate; // 110
+        const bulbCgst = bulbTaxable * 0.06; // 6.60
+        const bulbSgst = bulbTaxable * 0.06; // 6.60
+        const bulbLineTotal = bulbTaxable + bulbCgst + bulbSgst; // 123.20
+
+        const dalQty = 4;
+        const dalRate = 160;
+        const dalTaxable = dalQty * dalRate; // 640
+        const dalCgst = dalTaxable * 0.025; // 16.00
+        const dalSgst = dalTaxable * 0.025; // 16.00
+        const dalLineTotal = dalTaxable + dalCgst + dalSgst; // 672.00
+
+        const subtotal3 = butterTaxable + maggiTaxable + bulbTaxable + dalTaxable; // 1390.00
+        const cgst3 = butterCgst + maggiCgst + bulbCgst + dalCgst; // 61.00
+        const sgst3 = butterSgst + maggiSgst + bulbSgst + dalSgst; // 61.00
+        const grandTotal3 = 1512.00;
+
+        inv3 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust1.id,
+            invoiceNumber: 'INV-DEMO-003',
+            invoiceType: 'CREDIT_SALE',
+            invoiceDate: new Date(Date.now() - 2 * 86400000),
+            dueDate: new Date(Date.now() + 28 * 86400000),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            customerNameSnapshot: cust1.name,
+            customerPhoneSnapshot: cust1.phone,
+            customerAddressSnapshot: `${cust1.addressLine1}, ${cust1.city}`,
+            subtotal: subtotal3,
+            taxableAmount: subtotal3,
+            cgstAmount: cgst3,
+            sgstAmount: sgst3,
+            roundOff: 0.0,
+            grandTotal: grandTotal3,
+            amountPaid: 0.0,
+            amountReturned: 0,
+            paymentStatus: 'UNPAID',
+            notes: 'Khata credit sale booked to customer ledger [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(Date.now() - 2 * 86400000),
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodButter.id,
+                  productNameSnapshot: prodButter.name,
+                  skuSnapshot: prodButter.sku,
+                  barcodeSnapshot: prodButter.barcode,
+                  unitNameSnapshot: prodButter.unitCode,
+                  hsnCodeSnapshot: prodButter.hsnCode,
+                  quantity: butterQty,
+                  sellingRate: butterRate,
+                  taxableAmount: butterTaxable,
+                  taxRate: 12.0,
+                  cgstRate: 6.0,
+                  sgstRate: 6.0,
+                  cgstAmount: butterCgst,
+                  sgstAmount: butterSgst,
+                  taxAmount: butterCgst + butterSgst,
+                  lineTotal: butterLineTotal,
+                  unitCostSnapshot: prodButter.cost,
+                },
+                {
+                  companyId,
+                  productId: prodMaggi.id,
+                  productNameSnapshot: prodMaggi.name,
+                  skuSnapshot: prodMaggi.sku,
+                  barcodeSnapshot: prodMaggi.barcode,
+                  unitNameSnapshot: prodMaggi.unitCode,
+                  hsnCodeSnapshot: prodMaggi.hsnCode,
+                  quantity: maggiQty,
+                  sellingRate: maggiRate,
+                  taxableAmount: maggiTaxable,
+                  taxRate: 12.0,
+                  cgstRate: 6.0,
+                  sgstRate: 6.0,
+                  cgstAmount: maggiCgst,
+                  sgstAmount: maggiSgst,
+                  taxAmount: maggiCgst + maggiSgst,
+                  lineTotal: maggiLineTotal,
+                  unitCostSnapshot: prodMaggi.cost,
+                },
+                {
+                  companyId,
+                  productId: prodLedBulb.id,
+                  productNameSnapshot: prodLedBulb.name,
+                  skuSnapshot: prodLedBulb.sku,
+                  barcodeSnapshot: prodLedBulb.barcode,
+                  unitNameSnapshot: prodLedBulb.unitCode,
+                  hsnCodeSnapshot: prodLedBulb.hsnCode,
+                  quantity: bulbQty,
+                  sellingRate: bulbRate,
+                  taxableAmount: bulbTaxable,
+                  taxRate: 12.0,
+                  cgstRate: 6.0,
+                  sgstRate: 6.0,
+                  cgstAmount: bulbCgst,
+                  sgstAmount: bulbSgst,
+                  taxAmount: bulbCgst + bulbSgst,
+                  lineTotal: bulbLineTotal,
+                  unitCostSnapshot: prodLedBulb.cost,
+                },
+                {
+                  companyId,
+                  productId: prodDal.id,
+                  productNameSnapshot: prodDal.name,
+                  skuSnapshot: prodDal.sku,
+                  barcodeSnapshot: prodDal.barcode,
+                  unitNameSnapshot: prodDal.unitCode,
+                  hsnCodeSnapshot: prodDal.hsnCode,
+                  quantity: dalQty,
+                  sellingRate: dalRate,
+                  taxableAmount: dalTaxable,
+                  taxRate: 5.0,
+                  cgstRate: 2.5,
+                  sgstRate: 2.5,
+                  cgstAmount: dalCgst,
+                  sgstAmount: dalSgst,
+                  taxAmount: dalCgst + dalSgst,
+                  lineTotal: dalLineTotal,
+                  unitCostSnapshot: prodDal.cost,
+                },
+              ],
+            },
+          },
+        });
+        salesCreated++;
+
+        // Deduct inventory
+        await tx.stockMovement.createMany({
+          data: [
+            {
+              companyId,
+              productId: prodButter.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -butterQty,
+              unitCost: prodButter.cost,
+              referenceType: 'SALE',
+              referenceId: inv3.id,
+              referenceNumber: inv3.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-003 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodMaggi.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -maggiQty,
+              unitCost: prodMaggi.cost,
+              referenceType: 'SALE',
+              referenceId: inv3.id,
+              referenceNumber: inv3.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-003 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodLedBulb.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -bulbQty,
+              unitCost: prodLedBulb.cost,
+              referenceType: 'SALE',
+              referenceId: inv3.id,
+              referenceNumber: inv3.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-003 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodDal.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -dalQty,
+              unitCost: prodDal.cost,
+              referenceType: 'SALE',
+              referenceId: inv3.id,
+              referenceNumber: inv3.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-003 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+          ],
+        });
+        movementsCreated += 4;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodButter.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: butterQty } },
+        });
+        await tx.product.update({ where: { id: prodButter.id }, data: { currentStock: { decrement: butterQty } } });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodMaggi.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: maggiQty } },
+        });
+        await tx.product.update({ where: { id: prodMaggi.id }, data: { currentStock: { decrement: maggiQty } } });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodLedBulb.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: bulbQty } },
+        });
+        await tx.product.update({ where: { id: prodLedBulb.id }, data: { currentStock: { decrement: bulbQty } } });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodDal.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: dalQty } },
+        });
+        await tx.product.update({ where: { id: prodDal.id }, data: { currentStock: { decrement: dalQty } } });
+
+        // Update Customer Khata balance
+        const runningCust1 = (cust1.currentBalance || 2500) + grandTotal3;
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust1.id,
+            entryDate: inv3.invoiceDate,
+            transactionType: 'SALE',
+            referenceType: 'INVOICE',
+            referenceId: inv3.id,
+            referenceNumber: inv3.invoiceNumber,
+            debitAmount: grandTotal3,
+            creditAmount: 0,
+            runningBalance: runningCust1,
+            description: `Khata Credit Sale #${inv3.invoiceNumber} [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        await tx.customer.update({
+          where: { id: cust1.id },
+          data: { currentBalance: runningCust1 },
+        });
+        cust1.currentBalance = runningCust1;
+      }
+
+      // Invoice 4: INV-DEMO-004 (Interstate B2B Tax Invoice with IGST)
+      let inv4 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-004' },
+      });
+      if (!inv4 && cust4) {
+        const spkQty = 2;
+        const spkRate = 849;
+        const spkTaxable = spkQty * spkRate; // 1698
+        const spkIgst = spkTaxable * 0.18; // 305.64
+        const spkLineTotal = spkTaxable + spkIgst; // 2003.64
+
+        const sprQty = 2;
+        const sprRate = 175;
+        const sprTaxable = sprQty * sprRate; // 350
+        const sprIgst = sprTaxable * 0.12; // 42.00
+        const sprLineTotal = sprTaxable + sprIgst; // 392.00
+
+        const subtotal4 = spkTaxable + sprTaxable; // 2048.00
+        const igst4 = spkIgst + sprIgst; // 347.64
+        const grandTotal4 = 2396.00;
+        const roundOff4 = 0.36;
+        const amountPaid4 = 1396.00;
+
+        inv4 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust4.id,
+            invoiceNumber: 'INV-DEMO-004',
+            invoiceType: 'TAX_INVOICE',
+            invoiceDate: new Date(Date.now() - 1 * 86400000),
+            dueDate: new Date(Date.now() + 14 * 86400000),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            customerNameSnapshot: cust4.name,
+            customerPhoneSnapshot: cust4.phone,
+            customerAddressSnapshot: `${cust4.addressLine1}, ${cust4.city}, ${cust4.state}`,
+            customerGstinSnapshot: cust4.gstin,
+            subtotal: subtotal4,
+            taxableAmount: subtotal4,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: igst4,
+            roundOff: roundOff4,
+            grandTotal: grandTotal4,
+            amountPaid: amountPaid4,
+            amountReturned: 0,
+            paymentStatus: 'PARTIALLY_PAID',
+            notes: 'Interstate B2B tax invoice with IGST [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(Date.now() - 1 * 86400000),
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodSpeaker.id,
+                  productNameSnapshot: prodSpeaker.name,
+                  skuSnapshot: prodSpeaker.sku,
+                  barcodeSnapshot: prodSpeaker.barcode,
+                  unitNameSnapshot: prodSpeaker.unitCode,
+                  hsnCodeSnapshot: prodSpeaker.hsnCode,
+                  quantity: spkQty,
+                  sellingRate: spkRate,
+                  taxableAmount: spkTaxable,
+                  taxRate: 18.0,
+                  cgstRate: 0,
+                  sgstRate: 0,
+                  igstRate: 18.0,
+                  igstAmount: spkIgst,
+                  taxAmount: spkIgst,
+                  lineTotal: spkLineTotal,
+                  unitCostSnapshot: prodSpeaker.cost,
+                },
+                {
+                  companyId,
+                  productId: prodSpiral.id,
+                  productNameSnapshot: prodSpiral.name,
+                  skuSnapshot: prodSpiral.sku,
+                  barcodeSnapshot: prodSpiral.barcode,
+                  unitNameSnapshot: prodSpiral.unitCode,
+                  hsnCodeSnapshot: prodSpiral.hsnCode,
+                  quantity: sprQty,
+                  sellingRate: sprRate,
+                  taxableAmount: sprTaxable,
+                  taxRate: 12.0,
+                  cgstRate: 0,
+                  sgstRate: 0,
+                  igstRate: 12.0,
+                  igstAmount: sprIgst,
+                  taxAmount: sprIgst,
+                  lineTotal: sprLineTotal,
+                  unitCostSnapshot: prodSpiral.cost,
+                },
+              ],
+            },
+          },
+        });
+        salesCreated++;
+
+        // Stock deductions
+        await tx.stockMovement.createMany({
+          data: [
+            {
+              companyId,
+              productId: prodSpeaker.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -spkQty,
+              unitCost: prodSpeaker.cost,
+              referenceType: 'SALE',
+              referenceId: inv4.id,
+              referenceNumber: inv4.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-004 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodSpiral.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -sprQty,
+              unitCost: prodSpiral.cost,
+              referenceType: 'SALE',
+              referenceId: inv4.id,
+              referenceNumber: inv4.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-004 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+          ],
+        });
+        movementsCreated += 2;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodSpeaker.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: spkQty } },
+        });
+        await tx.product.update({ where: { id: prodSpeaker.id }, data: { currentStock: { decrement: spkQty } } });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodSpiral.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: sprQty } },
+        });
+        await tx.product.update({ where: { id: prodSpiral.id }, data: { currentStock: { decrement: sprQty } } });
+
+        // Partial payment record via Bank Transfer
+        const pay3 = await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust4.id,
+            salesInvoiceId: inv4.id,
+            paymentNumber: 'SPAY-DEMO-003',
+            paymentDate: inv4.invoiceDate,
+            amount: amountPaid4,
+            paymentMode: 'BANK_TRANSFER',
+            referenceNo: 'NEFT/HDFC/2026091801',
+            status: 'POSTED',
+            notes: 'Advance part payment received via NEFT [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+
+        // Ledger entries
+        const runningCust4AfterSale = (cust4.currentBalance || 0) + grandTotal4;
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust4.id,
+            entryDate: inv4.invoiceDate,
+            transactionType: 'SALE',
+            referenceType: 'INVOICE',
+            referenceId: inv4.id,
+            referenceNumber: inv4.invoiceNumber,
+            debitAmount: grandTotal4,
+            creditAmount: 0,
+            runningBalance: runningCust4AfterSale,
+            description: `Interstate Tax Invoice #${inv4.invoiceNumber} [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+
+        const runningCust4AfterPay = runningCust4AfterSale - amountPaid4;
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust4.id,
+            entryDate: inv4.invoiceDate,
+            transactionType: 'PAYMENT',
+            referenceType: 'PAYMENT',
+            referenceId: pay3.id,
+            referenceNumber: pay3.paymentNumber,
+            debitAmount: 0,
+            creditAmount: amountPaid4,
+            runningBalance: runningCust4AfterPay,
+            description: `Part-payment via NEFT #${pay3.paymentNumber} [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+
+        await tx.customer.update({
+          where: { id: cust4.id },
+          data: { currentBalance: runningCust4AfterPay },
+        });
+        cust4.currentBalance = runningCust4AfterPay;
+      }
+
+      // Invoice 5: INV-DEMO-005 (Discounted Retail Sale paid via Card)
+      let inv5 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-005' },
+      });
+      if (!inv5 && cust5) {
+        const silkQty = 2;
+        const silkRate = 165;
+        const silkTaxable = silkQty * silkRate; // 330
+        const silkCgst = silkTaxable * 0.09; // 29.70
+        const silkSgst = silkTaxable * 0.09; // 29.70
+        const silkLineTotal = silkTaxable + silkCgst + silkSgst; // 389.40
+
+        const packQty = 1;
+        const packRate = 360;
+        const packTaxable = packQty * packRate; // 360
+        const packCgst = packTaxable * 0.06; // 21.60
+        const packSgst = packTaxable * 0.06; // 21.60
+        const packLineTotal = packTaxable + packCgst + packSgst; // 403.20
+
+        const subtotal5 = silkTaxable + packTaxable; // 690.00
+        const discount5 = 50.00;
+        const taxable5 = subtotal5 - discount5; // 640.00
+        const cgst5 = 47.58;
+        const sgst5 = 47.58;
+        const grandTotal5 = 735.00;
+        const roundOff5 = -0.16;
+
+        inv5 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust5.id,
+            invoiceNumber: 'INV-DEMO-005',
+            invoiceType: 'RETAIL',
+            invoiceDate: new Date(),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            customerNameSnapshot: cust5.name,
+            customerPhoneSnapshot: cust5.phone,
+            customerAddressSnapshot: `${cust5.addressLine1}, ${cust5.city}`,
+            subtotal: subtotal5,
+            invoiceDiscount: discount5,
+            taxableAmount: taxable5,
+            cgstAmount: cgst5,
+            sgstAmount: sgst5,
+            roundOff: roundOff5,
+            grandTotal: grandTotal5,
+            amountPaid: grandTotal5,
+            amountReturned: 0,
+            paymentStatus: 'PAID',
+            notes: 'Loyal customer special discount sale paid via debit card [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(),
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodSilk.id,
+                  productNameSnapshot: prodSilk.name,
+                  skuSnapshot: prodSilk.sku,
+                  barcodeSnapshot: prodSilk.barcode,
+                  unitNameSnapshot: prodSilk.unitCode,
+                  hsnCodeSnapshot: prodSilk.hsnCode,
+                  quantity: silkQty,
+                  sellingRate: silkRate,
+                  taxableAmount: silkTaxable,
+                  taxRate: 18.0,
+                  cgstRate: 9.0,
+                  sgstRate: 9.0,
+                  cgstAmount: silkCgst,
+                  sgstAmount: silkSgst,
+                  taxAmount: silkCgst + silkSgst,
+                  lineTotal: silkLineTotal,
+                  unitCostSnapshot: prodSilk.cost,
+                },
+                {
+                  companyId,
+                  productId: prodPack6.id,
+                  productNameSnapshot: prodPack6.name,
+                  skuSnapshot: prodPack6.sku,
+                  barcodeSnapshot: prodPack6.barcode,
+                  unitNameSnapshot: prodPack6.unitCode,
+                  hsnCodeSnapshot: prodPack6.hsnCode,
+                  quantity: packQty,
+                  sellingRate: packRate,
+                  taxableAmount: packTaxable,
+                  taxRate: 12.0,
+                  cgstRate: 6.0,
+                  sgstRate: 6.0,
+                  cgstAmount: packCgst,
+                  sgstAmount: packSgst,
+                  taxAmount: packCgst + packSgst,
+                  lineTotal: packLineTotal,
+                  unitCostSnapshot: prodPack6.cost,
+                },
+              ],
+            },
+          },
+        });
+        salesCreated++;
+
+        // Stock deductions
+        await tx.stockMovement.createMany({
+          data: [
+            {
+              companyId,
+              productId: prodSilk.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -silkQty,
+              unitCost: prodSilk.cost,
+              referenceType: 'SALE',
+              referenceId: inv5.id,
+              referenceNumber: inv5.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-005 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+            {
+              companyId,
+              productId: prodPack6.id,
+              locationId: defaultLocation.id,
+              movementType: 'SALE',
+              quantity: -packQty,
+              unitCost: prodPack6.cost,
+              referenceType: 'SALE',
+              referenceId: inv5.id,
+              referenceNumber: inv5.invoiceNumber,
+              notes: 'Outward sale against INV-DEMO-005 [DEMO_DATA]',
+              createdBy: userId || 'SYSTEM',
+            },
+          ],
+        });
+        movementsCreated += 2;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodSilk.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: silkQty } },
+        });
+        await tx.product.update({ where: { id: prodSilk.id }, data: { currentStock: { decrement: silkQty } } });
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodPack6.id, locationId: defaultLocation.id } },
+          data: { quantity: { decrement: packQty } },
+        });
+        await tx.product.update({ where: { id: prodPack6.id }, data: { currentStock: { decrement: packQty } } });
+
+        // Payment record via Card
+        await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust5.id,
+            salesInvoiceId: inv5.id,
+            paymentNumber: 'SPAY-DEMO-004',
+            paymentDate: inv5.invoiceDate,
+            amount: grandTotal5,
+            paymentMode: 'CARD',
+            referenceNo: 'POS-TXN-491028',
+            status: 'POSTED',
+            notes: 'Debit card POS swipe authorization [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+      }
+
+      // Invoice 6: INV-DEMO-006 (Held POS Draft Invoice)
+      let inv6 = await tx.salesInvoice.findFirst({
+        where: { companyId, invoiceNumber: 'INV-DEMO-006' },
+      });
+      if (!inv6 && cust2) {
+        inv6 = await tx.salesInvoice.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            invoiceNumber: 'INV-DEMO-006',
+            invoiceType: 'RETAIL',
+            invoiceDate: new Date(),
+            locationId: defaultLocation.id,
+            status: 'DRAFT',
+            customerNameSnapshot: cust2.name,
+            customerPhoneSnapshot: cust2.phone,
+            subtotal: 385.00,
+            taxableAmount: 385.00,
+            cgstAmount: 17.43,
+            sgstAmount: 17.43,
+            roundOff: -0.11,
+            grandTotal: 419.00,
+            amountPaid: 0.0,
+            amountReturned: 0,
+            paymentStatus: 'UNPAID',
+            notes: 'Held cart invoice awaiting customer checkout [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            items: {
+              create: [
+                {
+                  companyId,
+                  productId: prodTea.id,
+                  productNameSnapshot: prodTea.name,
+                  skuSnapshot: prodTea.sku,
+                  barcodeSnapshot: prodTea.barcode,
+                  unitNameSnapshot: prodTea.unitCode,
+                  quantity: 1,
+                  sellingRate: 265,
+                  taxableAmount: 265,
+                  taxRate: 5.0,
+                  cgstRate: 2.5,
+                  sgstRate: 2.5,
+                  cgstAmount: 6.63,
+                  sgstAmount: 6.63,
+                  taxAmount: 13.25,
+                  lineTotal: 278.25,
+                  unitCostSnapshot: prodTea.cost,
+                },
+                {
+                  companyId,
+                  productId: prodRedBull.id,
+                  productNameSnapshot: prodRedBull.name,
+                  skuSnapshot: prodRedBull.sku,
+                  barcodeSnapshot: prodRedBull.barcode,
+                  unitNameSnapshot: prodRedBull.unitCode,
+                  quantity: 1,
+                  sellingRate: 120,
+                  taxableAmount: 120,
+                  taxRate: 18.0,
+                  cgstRate: 9.0,
+                  sgstRate: 9.0,
+                  cgstAmount: 10.80,
+                  sgstAmount: 10.80,
+                  taxAmount: 21.60,
+                  lineTotal: 141.60,
+                  unitCostSnapshot: prodRedBull.cost,
+                },
+              ],
+            },
+          },
+        });
+        salesCreated++;
+      }
+
+      // 15. Customer Khata Account Settlements
+      // SPAY-DEMO-005: Ramesh Sharma pays 1500 towards Khata balance
+      let pay5 = await tx.salesPayment.findFirst({
+        where: { companyId, paymentNumber: 'SPAY-DEMO-005' },
+      });
+      if (!pay5 && cust1) {
+        pay5 = await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust1.id,
+            paymentNumber: 'SPAY-DEMO-005',
+            paymentDate: new Date(),
+            amount: 1500.00,
+            paymentMode: 'UPI',
+            referenceNo: 'UPI/PHONEPE/9920199201',
+            status: 'POSTED',
+            notes: 'Customer Khata account payment via PhonePe [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+
+        const runningCust1Final = (cust1.currentBalance || 4012) - 1500.00;
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust1.id,
+            entryDate: pay5.paymentDate,
+            transactionType: 'PAYMENT',
+            referenceType: 'PAYMENT',
+            referenceId: pay5.id,
+            referenceNumber: pay5.paymentNumber,
+            debitAmount: 0,
+            creditAmount: 1500.00,
+            runningBalance: runningCust1Final,
+            description: `Khata Payment received via UPI (#SPAY-DEMO-005) [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        await tx.customer.update({
+          where: { id: cust1.id },
+          data: { currentBalance: runningCust1Final },
+        });
+        cust1.currentBalance = runningCust1Final;
+      }
+
+      // SPAY-DEMO-006: Anita Desai settles her full 650 opening balance in Cash
+      let pay6 = await tx.salesPayment.findFirst({
+        where: { companyId, paymentNumber: 'SPAY-DEMO-006' },
+      });
+      if (!pay6 && cust5) {
+        pay6 = await tx.salesPayment.create({
+          data: {
+            companyId,
+            customerId: cust5.id,
+            paymentNumber: 'SPAY-DEMO-006',
+            paymentDate: new Date(),
+            amount: 650.00,
+            paymentMode: 'CASH',
+            status: 'POSTED',
+            notes: 'Cleared full previous opening balance [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        salesPaymentsCreated++;
+
+        const runningCust5Final = (cust5.currentBalance || 650) - 650.00;
+        await tx.customerLedger.create({
+          data: {
+            companyId,
+            customerId: cust5.id,
+            entryDate: pay6.paymentDate,
+            transactionType: 'PAYMENT',
+            referenceType: 'PAYMENT',
+            referenceId: pay6.id,
+            referenceNumber: pay6.paymentNumber,
+            debitAmount: 0,
+            creditAmount: 650.00,
+            runningBalance: runningCust5Final,
+            description: `Payment received in Cash (#SPAY-DEMO-006) [DEMO_DATA]`,
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        await tx.customer.update({
+          where: { id: cust5.id },
+          data: { currentBalance: runningCust5Final },
+        });
+        cust5.currentBalance = runningCust5Final;
+      }
+
+      // 16. Demo Sales Return: SR-DEMO-001 (Resellable Return against INV-DEMO-002)
+      let sr1 = await tx.salesReturn.findFirst({
+        where: { companyId, returnNumber: 'SR-DEMO-001' },
+      });
+      if (!sr1 && inv2 && cust2) {
+        const retQty = 1;
+        const retRate = 120.00;
+        const retTaxable = 120.00;
+        const retCgst = 10.80;
+        const retSgst = 10.80;
+        const retTotal = 141.60;
+
+        const origItem = inv2.items?.find((it: any) => it.productId === prodRedBull.id);
+
+        sr1 = await tx.salesReturn.create({
+          data: {
+            companyId,
+            customerId: cust2.id,
+            originalSalesInvoiceId: inv2.id,
+            returnNumber: 'SR-DEMO-001',
+            returnDate: new Date(),
+            locationId: defaultLocation.id,
+            status: 'POSTED',
+            subtotal: retTaxable,
+            taxableAmount: retTaxable,
+            cgstAmount: retCgst,
+            sgstAmount: retSgst,
+            grandTotal: retTotal,
+            refundAmount: retTotal,
+            creditAmount: 0,
+            reason: 'Customer bought extra can by mistake [DEMO_DATA]',
+            notes: 'Returned 1 unit of Red Bull in unopened condition [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+            approvedBy: userId || 'SYSTEM',
+            postedBy: userId || 'SYSTEM',
+            postedAt: new Date(),
+            items: {
+              create: [
+                {
+                  companyId,
+                  originalSalesInvoiceItemId: origItem?.id || null,
+                  productId: prodRedBull.id,
+                  productNameSnapshot: prodRedBull.name,
+                  quantity: retQty,
+                  returnRate: retRate,
+                  taxRate: 18.0,
+                  taxAmount: retCgst + retSgst,
+                  lineTotal: retTotal,
+                  restockCondition: 'RESELLABLE',
+                  reason: 'Unopened can returned [DEMO_DATA]',
+                },
+              ],
+            },
+          },
+        });
+        salesReturnsCreated++;
+
+        // Restock Red Bull stock movement (positive qty for SALES_RETURN)
+        await tx.stockMovement.create({
+          data: {
+            companyId,
+            productId: prodRedBull.id,
+            locationId: defaultLocation.id,
+            movementType: 'SALES_RETURN',
+            quantity: retQty,
+            unitCost: prodRedBull.cost,
+            referenceType: 'SALES_RETURN',
+            referenceId: sr1.id,
+            referenceNumber: sr1.returnNumber,
+            notes: 'Restocked 1 unit of Red Bull in resellable condition [DEMO_DATA]',
+            createdBy: userId || 'SYSTEM',
+          },
+        });
+        movementsCreated++;
+
+        await tx.stockBalance.update({
+          where: { companyId_productId_locationId: { companyId, productId: prodRedBull.id, locationId: defaultLocation.id } },
+          data: { quantity: { increment: retQty } },
+        });
+        await tx.product.update({
+          where: { id: prodRedBull.id },
+          data: { currentStock: { increment: retQty } },
+        });
+
+        // Update sales invoice amountReturned
+        await tx.salesInvoice.update({
+          where: { id: inv2.id },
+          data: { amountReturned: { increment: retTotal } },
+        });
+      }
+
+      // 17. Audit Log
       await this.auditService.log(
         {
           companyId,
@@ -1624,6 +3121,10 @@ export class DemoDataService {
             purchasesCreated,
             paymentsCreated,
             returnsCreated,
+            customersCreated,
+            salesCreated,
+            salesPaymentsCreated,
+            salesReturnsCreated,
           }),
         },
         tx as any,
@@ -1643,7 +3144,11 @@ export class DemoDataService {
         purchasesCreated,
         paymentsCreated,
         returnsCreated,
-        message: `Successfully installed demo data with ${productsCreated} products, ${suppliersCreated} suppliers, ${purchasesCreated} purchase invoices, and inventory records.`,
+        customersCreated,
+        salesCreated,
+        salesPaymentsCreated,
+        salesReturnsCreated,
+        message: `Successfully installed demo data with ${productsCreated} products, ${suppliersCreated} suppliers, ${purchasesCreated} purchase invoices, ${customersCreated} customers, ${salesCreated} sales invoices, and inventory records.`,
       };
     });
   }
@@ -1684,7 +3189,114 @@ export class DemoDataService {
       });
       const demoSupplierIds = demoSuppliers.map((s) => s.id);
 
-      // 1. Delete Demo Purchase Return Items & Returns
+      // Find all demo customers
+      const demoCustomers = await tx.customer.findMany({
+        where: {
+          companyId,
+          OR: [
+            { customerCode: { startsWith: 'CUST-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+        select: { id: true },
+      });
+      const demoCustomerIds = demoCustomers.map((c) => c.id);
+
+      // Find all demo sales invoices
+      const demoSalesInvoices = await tx.salesInvoice.findMany({
+        where: {
+          companyId,
+          OR: [
+            { invoiceNumber: { startsWith: 'INV-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+            ...(demoCustomerIds.length > 0 ? [{ customerId: { in: demoCustomerIds } }] : []),
+          ],
+        },
+        select: { id: true },
+      });
+      const demoInvoiceIds = demoSalesInvoices.map((i) => i.id);
+
+      // Find all demo sales returns
+      const demoSalesReturns = await tx.salesReturn.findMany({
+        where: {
+          companyId,
+          OR: [
+            { returnNumber: { startsWith: 'SR-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+            ...(demoInvoiceIds.length > 0 ? [{ originalSalesInvoiceId: { in: demoInvoiceIds } }] : []),
+          ],
+        },
+        select: { id: true },
+      });
+      const demoSalesReturnIds = demoSalesReturns.map((r) => r.id);
+
+      // 1. Delete Demo Sales Return Items & Sales Returns
+      let salesReturnsDeleted = 0;
+      if (demoSalesReturnIds.length > 0) {
+        await tx.salesReturnItem.deleteMany({
+          where: { salesReturnId: { in: demoSalesReturnIds } },
+        });
+        const srRes = await tx.salesReturn.deleteMany({
+          where: { id: { in: demoSalesReturnIds } },
+        });
+        salesReturnsDeleted = srRes.count;
+      }
+      if (demoProductIds.length > 0) {
+        await tx.salesReturnItem.deleteMany({
+          where: { productId: { in: demoProductIds } },
+        });
+      }
+
+      // 2. Delete Demo Sales Payments
+      const spRes = await tx.salesPayment.deleteMany({
+        where: {
+          companyId,
+          OR: [
+            { paymentNumber: { startsWith: 'SPAY-DEMO-' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+            ...(demoCustomerIds.length > 0 ? [{ customerId: { in: demoCustomerIds } }] : []),
+            ...(demoInvoiceIds.length > 0 ? [{ salesInvoiceId: { in: demoInvoiceIds } }] : []),
+          ],
+        },
+      });
+      const salesPaymentsDeleted = spRes.count;
+
+      // 3. Delete Demo Sales Invoice Items & Sales Invoices
+      let salesDeleted = 0;
+      if (demoInvoiceIds.length > 0) {
+        await tx.salesInvoiceItem.deleteMany({
+          where: { salesInvoiceId: { in: demoInvoiceIds } },
+        });
+        const invRes = await tx.salesInvoice.deleteMany({
+          where: { id: { in: demoInvoiceIds } },
+        });
+        salesDeleted = invRes.count;
+      }
+      if (demoProductIds.length > 0) {
+        await tx.salesInvoiceItem.deleteMany({
+          where: { productId: { in: demoProductIds } },
+        });
+      }
+
+      // 4. Delete Demo Customer Ledger Entries & Customers
+      await tx.customerLedger.deleteMany({
+        where: {
+          companyId,
+          OR: [
+            ...(demoCustomerIds.length > 0 ? [{ customerId: { in: demoCustomerIds } }] : []),
+            { description: { contains: '[DEMO_DATA]' } },
+            { notes: { contains: '[DEMO_DATA]' } },
+          ],
+        },
+      });
+
+      let customersDeleted = 0;
+      if (demoCustomerIds.length > 0) {
+        const custRes = await tx.customer.deleteMany({
+          where: { id: { in: demoCustomerIds } },
+        });
+        customersDeleted = custRes.count;
+      }
       const demoReturns = await tx.purchaseReturn.findMany({
         where: {
           companyId,
@@ -1975,6 +3587,10 @@ export class DemoDataService {
             purchasesDeleted,
             paymentsDeleted,
             returnsDeleted,
+            customersDeleted,
+            salesDeleted,
+            salesPaymentsDeleted,
+            salesReturnsDeleted,
           }),
         },
         tx as any,
@@ -1994,7 +3610,11 @@ export class DemoDataService {
         purchasesDeleted,
         paymentsDeleted,
         returnsDeleted,
-        message: `Successfully cleared demo data (${productsDeleted} products, ${suppliersDeleted} suppliers, ${purchasesDeleted} purchases removed).`,
+        customersDeleted,
+        salesDeleted,
+        salesPaymentsDeleted,
+        salesReturnsDeleted,
+        message: `Successfully cleared demo data (${productsDeleted} products, ${suppliersDeleted} suppliers, ${purchasesDeleted} purchases, ${customersDeleted} customers, ${salesDeleted} sales removed).`,
       };
     });
   }

@@ -163,16 +163,41 @@ export interface Product extends BaseEntity {
   priceHistory?: ProductPriceHistory[];
 }
 
+export type CustomerType = 'INDIVIDUAL' | 'BUSINESS';
+export type CustomerOpeningBalanceType = 'RECEIVABLE' | 'ADVANCE';
+export type CustomerRegistrationType = 'REGULAR' | 'COMPOSITION' | 'UNREGISTERED' | 'CONSUMER';
+
 export interface Customer extends BaseEntity {
   companyId: string;
+  customerCode: string;
   name: string;
+  contactPerson?: string | null;
   phone?: string | null;
+  alternatePhone?: string | null;
   email?: string | null;
+  customerType: CustomerType | string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pinCode?: string | null;
+  country: string;
   gstin?: string | null;
-  address?: string | null;
+  registrationType?: CustomerRegistrationType | string | null;
+  openingBalance: number;
+  openingBalanceType: CustomerOpeningBalanceType | string;
+  openingBalanceDate?: Date | string | null;
   creditLimit: number;
+  creditPeriodDays: number;
+  notes?: string | null;
   currentBalance: number;
   isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  _count?: {
+    salesInvoices?: number;
+    salesPayments?: number;
+  };
 }
 
 export type SupplierRegistrationType = 'REGULAR' | 'COMPOSITION' | 'UNREGISTERED' | 'OVERSEAS';
@@ -561,6 +586,7 @@ export interface ProductFilterDTO {
 
 export interface PaginatedResult<T> {
   items: T[];
+  data?: T[];
   total: number;
   page: number;
   pageSize: number;
@@ -745,6 +771,10 @@ export interface DemoDataStatus {
   demoPurchasesCount?: number;
   demoPaymentsCount?: number;
   demoReturnsCount?: number;
+  demoCustomersCount?: number;
+  demoSalesCount?: number;
+  demoSalesPaymentsCount?: number;
+  demoSalesReturnsCount?: number;
   installedAt?: string | null;
 }
 
@@ -762,6 +792,10 @@ export interface DemoDataInstallResult {
   purchasesCreated?: number;
   paymentsCreated?: number;
   returnsCreated?: number;
+  customersCreated?: number;
+  salesCreated?: number;
+  salesPaymentsCreated?: number;
+  salesReturnsCreated?: number;
   message: string;
 }
 
@@ -779,6 +813,10 @@ export interface DemoDataClearResult {
   purchasesDeleted?: number;
   paymentsDeleted?: number;
   returnsDeleted?: number;
+  customersDeleted?: number;
+  salesDeleted?: number;
+  salesPaymentsDeleted?: number;
+  salesReturnsDeleted?: number;
   message: string;
 }
 
@@ -1256,5 +1294,1623 @@ export interface PurchaseDashboardKPIs {
   topSuppliersByPayable?: { name: string; code: string; balance: number }[];
 }
 
+
+
+// ========================================================
+// Step 6: Sales Management, POS Billing & Customer Module
+// ========================================================
+
+// ----------------- Customer DTOs -----------------
+
+export interface CustomerCreateDTO {
+  customerCode?: string;
+  name: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  email?: string | null;
+  customerType?: CustomerType | string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pinCode?: string | null;
+  country?: string;
+  gstin?: string | null;
+  registrationType?: CustomerRegistrationType | string | null;
+  openingBalance?: number;
+  openingBalanceType?: CustomerOpeningBalanceType | string;
+  openingBalanceDate?: string | null;
+  creditLimit?: number;
+  creditPeriodDays?: number;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface CustomerUpdateDTO {
+  customerCode?: string;
+  name?: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  email?: string | null;
+  customerType?: CustomerType | string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pinCode?: string | null;
+  country?: string;
+  gstin?: string | null;
+  registrationType?: CustomerRegistrationType | string | null;
+  creditLimit?: number;
+  creditPeriodDays?: number;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface CustomerFilterDTO {
+  search?: string;
+  isActive?: boolean;
+  status?: 'all' | 'active' | 'inactive';
+  city?: string;
+  state?: string;
+  customerType?: CustomerType | string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: 'name' | 'customerCode' | 'currentBalance' | 'createdAt' | 'city';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// ----------------- Sales Invoice Types -----------------
+
+export type SalesInvoiceStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type SalesPaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+export type SalesInvoiceType = 'RETAIL' | 'TAX_INVOICE' | 'CREDIT_SALE';
+export type RestockCondition = 'RESELLABLE' | 'DAMAGED' | 'DEFECTIVE' | 'EXPIRED' | 'REQUIRES_INSPECTION';
+export type SalesReturnStatus = 'POSTED' | 'CANCELLED';
+
+export interface SalesInvoiceItem extends BaseEntity {
+  companyId: string;
+  salesInvoiceId: string;
+  productId: string;
+  productNameSnapshot: string;
+  skuSnapshot?: string | null;
+  barcodeSnapshot?: string | null;
+  unitNameSnapshot?: string | null;
+  hsnCodeSnapshot?: string | null;
+  quantity: number;
+  sellingRate: number;
+  discountPercentage: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxRate: number;
+  cgstRate: number;
+  sgstRate: number;
+  igstRate: number;
+  cessRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  taxAmount: number;
+  lineTotal: number;
+  unitCostSnapshot: number;
+
+  product?: Product | null;
+}
+
+export interface SalesInvoice extends BaseEntity {
+  companyId: string;
+  customerId?: string | null;
+  invoiceNumber: string;
+  invoiceType: SalesInvoiceType | string;
+  invoiceDate: Date | string;
+  dueDate?: Date | string | null;
+  locationId?: string | null;
+  status: SalesInvoiceStatus | string;
+  customerNameSnapshot?: string | null;
+  customerPhoneSnapshot?: string | null;
+  customerAddressSnapshot?: string | null;
+  customerGstinSnapshot?: string | null;
+  subtotal: number;
+  lineDiscountTotal: number;
+  invoiceDiscount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  otherTaxAmount: number;
+  additionalCharges: number;
+  roundOff: number;
+  grandTotal: number;
+  amountPaid: number;
+  amountReturned: number;
+  paymentStatus: SalesPaymentStatus | string;
+  notes?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  postedBy?: string | null;
+  postedAt?: Date | string | null;
+
+  customer?: Customer | null;
+  location?: InventoryLocation | null;
+  items?: SalesInvoiceItem[];
+  salesPayments?: SalesPayment[];
+  salesReturns?: SalesReturn[];
+}
+
+// ----------------- Sales Payment Types -----------------
+
+export interface SalesPayment extends BaseEntity {
+  companyId: string;
+  customerId?: string | null;
+  salesInvoiceId?: string | null;
+  paymentNumber: string;
+  paymentDate: Date | string;
+  amount: number;
+  paymentMode: PaymentMethod | string;
+  referenceNo?: string | null;
+  status: PaymentStatus | string;
+  reversedAt?: Date | string | null;
+  reversedBy?: string | null;
+  reversalReason?: string | null;
+  notes?: string | null;
+  createdBy?: string | null;
+
+  customer?: Customer | null;
+  salesInvoice?: SalesInvoice | null;
+}
+
+// ----------------- Sales Return Types -----------------
+
+export interface SalesReturnItem extends BaseEntity {
+  companyId: string;
+  salesReturnId: string;
+  originalSalesInvoiceItemId?: string | null;
+  productId: string;
+  productNameSnapshot: string;
+  quantity: number;
+  returnRate: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  lineTotal: number;
+  restockCondition: RestockCondition | string;
+  reason?: string | null;
+
+  product?: Product | null;
+}
+
+export interface SalesReturn extends BaseEntity {
+  companyId: string;
+  returnNumber: string;
+  originalSalesInvoiceId: string;
+  customerId?: string | null;
+  returnDate: Date | string;
+  locationId?: string | null;
+  status: SalesReturnStatus | string;
+  subtotal: number;
+  discountAmount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  otherTaxAmount: number;
+  grandTotal: number;
+  refundAmount: number;
+  creditAmount: number;
+  reason?: string | null;
+  notes?: string | null;
+  createdBy?: string | null;
+  approvedBy?: string | null;
+  postedBy?: string | null;
+  postedAt?: Date | string | null;
+
+  customer?: Customer | null;
+  location?: InventoryLocation | null;
+  originalSalesInvoice?: SalesInvoice | null;
+  items?: SalesReturnItem[];
+}
+
+// ----------------- Customer Ledger Types -----------------
+
+export type CustomerLedgerTransactionType =
+  | 'OPENING_BALANCE'
+  | 'SALE'
+  | 'PAYMENT'
+  | 'SALES_RETURN'
+  | 'PAYMENT_REVERSAL'
+  | 'ADJUSTMENT';
+
+export interface CustomerLedgerEntry extends BaseEntity {
+  companyId: string;
+  customerId: string;
+  entryDate: Date | string;
+  transactionType: CustomerLedgerTransactionType;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  referenceNumber?: string | null;
+  debitAmount: number;  // Increases receivable (sale, opening receivable)
+  creditAmount: number; // Decreases receivable (payment, return, advance)
+  runningBalance: number;
+  description?: string | null;
+  notes?: string | null;
+  createdBy?: string | null;
+}
+
+// ----------------- Sales Calculation Types -----------------
+
+export interface SalesCalculationInputItem {
+  productId?: string;
+  quantity: number;
+  sellingRate?: number;
+  unitPrice?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  taxRate?: number;
+}
+
+export interface SalesLineCalculationResult {
+  productId?: string;
+  quantity: number;
+  sellingRate: number;
+  grossAmount: number;
+  discountPercentage: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxRate: number;
+  isInterstate: boolean;
+  cgstRate: number;
+  sgstRate: number;
+  igstRate: number;
+  cessRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  taxAmount: number;
+  lineTotal: number;
+}
+
+export interface SalesCalculationInput {
+  isInterstate?: boolean;
+  customerState?: string | null;
+  companyState?: string | null;
+  invoiceDiscount?: number;
+  discountValue?: number;
+  discountType?: 'PERCENTAGE' | 'FLAT';
+  additionalCharges?: number;
+  roundOff?: number;
+  items: SalesCalculationInputItem[];
+}
+
+export interface SalesCalculationResult {
+  subtotal: number;
+  lineDiscountTotal: number;
+  invoiceDiscount: number;
+  totalDiscount?: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  otherTaxAmount: number;
+  additionalCharges: number;
+  roundOff: number;
+  grandTotal: number;
+  isInterstate: boolean;
+  items: SalesLineCalculationResult[];
+}
+
+// ----------------- Sales Invoice DTOs -----------------
+
+export interface SalesInvoiceItemDraftDTO {
+  productId: string;
+  quantity: number;
+  sellingRate?: number;  // If omitted, use product's current selling price
+  unitPrice?: number;    // POS alias for sellingRate
+  discountPercentage?: number;
+  discountAmount?: number;
+  taxRate?: number;
+}
+
+export interface SalesInvoiceCreateDTO {
+  customerId?: string | null;
+  invoiceType?: SalesInvoiceType | string;
+  invoiceDate?: string;
+  dueDate?: string | null;
+  locationId?: string | null;
+  isInterstate?: boolean;
+  invoiceDiscount?: number;
+  additionalCharges?: number;
+  roundOff?: number;
+  notes?: string | null;
+  items: SalesInvoiceItemDraftDTO[];
+}
+
+export interface SalesInvoiceUpdateDTO {
+  customerId?: string | null;
+  invoiceType?: SalesInvoiceType | string;
+  invoiceDate?: string;
+  dueDate?: string | null;
+  locationId?: string | null;
+  invoiceDiscount?: number;
+  additionalCharges?: number;
+  roundOff?: number;
+  notes?: string | null;
+  items?: SalesInvoiceItemDraftDTO[];
+}
+
+export interface SalesPostDTO {
+  payments: SalesPaymentInputDTO[];
+}
+
+export interface SalesPaymentInputDTO {
+  amount: number;
+  paymentMode: PaymentMethod | string;
+  referenceNo?: string | null;
+  notes?: string | null;
+  paymentDate?: string;
+}
+
+export interface SalesFilterDTO {
+  search?: string;
+  customerId?: string;
+  locationId?: string;
+  status?: SalesInvoiceStatus;
+  paymentStatus?: SalesPaymentStatus;
+  invoiceType?: SalesInvoiceType;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: 'invoiceNumber' | 'invoiceDate' | 'grandTotal' | 'amountPaid' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// ----------------- Sales Payment DTOs -----------------
+
+export interface SalesPaymentCreateDTO {
+  customerId?: string | null;
+  salesInvoiceId?: string | null;
+  amount: number;
+  paymentDate?: string;
+  paymentMode: PaymentMethod | string;
+  referenceNo?: string | null;
+  notes?: string | null;
+}
+
+export interface SalesPaymentFilterDTO {
+  customerId?: string;
+  salesInvoiceId?: string;
+  startDate?: string;
+  endDate?: string;
+  paymentMode?: string;
+  status?: PaymentStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+// ----------------- Sales Return DTOs -----------------
+
+export interface SalesReturnItemDTO {
+  originalSalesInvoiceItemId?: string;
+  productId: string;
+  quantity: number;
+  restockCondition?: RestockCondition | string;
+  reason?: string;
+}
+
+export interface SalesReturnCreateDTO {
+  originalSalesInvoiceId: string;
+  locationId?: string | null;
+  returnDate?: string;
+  refundMode?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+  items: SalesReturnItemDTO[];
+}
+
+export interface SalesReturnFilterDTO {
+  search?: string;
+  originalSalesInvoiceId?: string;
+  customerId?: string;
+  status?: SalesReturnStatus;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+// ----------------- Customer Ledger DTOs -----------------
+
+export interface CustomerLedgerFilterDTO {
+  customerId: string;
+  startDate?: string;
+  endDate?: string;
+  transactionType?: CustomerLedgerTransactionType | string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CustomerStatementDTO {
+  customer: Customer;
+  openingBalance: number;
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+  entries: CustomerLedgerEntry[];
+}
+
+// ----------------- Sales Summary / KPI Types -----------------
+
+export interface SalesSummaryDTO {
+  totalSalesCount: number;
+  totalGrandTotal: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
+  draftsCount: number;
+  postedCount: number;
+  cancelledCount: number;
+  unpaidCount: number;
+  partiallyPaidCount: number;
+  paidCount: number;
+}
+
+export interface SalesDashboardKPIs {
+  salesTodayAmount: number;
+  salesTodayCount: number;
+  salesThisMonthAmount: number;
+  salesThisMonthCount: number;
+  outstandingReceivables: number;
+  unpaidInvoicesCount: number;
+  partiallyPaidInvoicesCount: number;
+  salesReturnsThisMonthAmount: number;
+  salesReturnsThisMonthCount: number;
+  totalSales?: number;
+  totalOutstanding?: number;
+  totalCollected?: number;
+  totalReturns?: number;
+  postedInvoicesCount?: number;
+  topCustomersByReceivable?: { name: string; code: string; balance: number }[];
+}
+
+export interface ProductSalesReportItem {
+  productId: string;
+  productName: string;
+  sku?: string;
+  quantitySold: number;
+  revenue: number;
+  costOfGoodsSold: number;
+  grossProfit: number;
+}
+
+export interface SalesReportFilterDTO {
+  startDate?: string;
+  endDate?: string;
+  customerId?: string;
+  locationId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+// POS product search result
+export interface POSProductSearchResult {
+  productId: string;
+  name: string;
+  shortName?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  hsnCode?: string | null;
+  sellingPrice: number;
+  mrp: number;
+  taxRate: number;
+  unitName?: string | null;
+  unitShortCode?: string | null;
+  allowDecimals: boolean;
+  availableStock: number;
+  locationId: string;
+  locationName: string;
+  isActive: boolean;
+  trackStock: boolean;
+}
+
+export interface POSProductSearchFilterDTO {
+  query: string;
+  locationId?: string;
+  exactBarcode?: boolean;
+}
+
+// ============================================================================
+// STEP 7: EXPENSES, CASH REGISTER, CASHBOOK & DAY-END CLOSING
+// ============================================================================
+
+// ----------------- Enums & Constants -----------------
+
+export const ExpenseStatus = {
+  DRAFT: 'DRAFT',
+  POSTED: 'POSTED',
+  CANCELLED: 'CANCELLED',
+} as const;
+export type ExpenseStatus = (typeof ExpenseStatus)[keyof typeof ExpenseStatus];
+
+export const ExpensePaymentMethod = {
+  CASH: 'CASH',
+  UPI: 'UPI',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  CARD: 'CARD',
+  CHEQUE: 'CHEQUE',
+  OTHER: 'OTHER',
+} as const;
+export type ExpensePaymentMethod = (typeof ExpensePaymentMethod)[keyof typeof ExpensePaymentMethod];
+
+export const CashRegisterSessionStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+} as const;
+export type CashRegisterSessionStatus = (typeof CashRegisterSessionStatus)[keyof typeof CashRegisterSessionStatus];
+
+export const CashMovementType = {
+  OPENING_CASH: 'OPENING_CASH',
+  CASH_SALE: 'CASH_SALE',
+  CUSTOMER_PAYMENT: 'CUSTOMER_PAYMENT',
+  CASH_IN: 'CASH_IN',
+  CASH_WITHDRAWAL: 'CASH_WITHDRAWAL',
+  CASH_EXPENSE: 'CASH_EXPENSE',
+  SUPPLIER_CASH_PAYMENT: 'SUPPLIER_CASH_PAYMENT',
+  CASH_REFUND: 'CASH_REFUND',
+  CASH_OUT: 'CASH_OUT',
+  CASH_DEPOSIT: 'CASH_DEPOSIT',
+  CASH_ADJUSTMENT: 'CASH_ADJUSTMENT',
+} as const;
+export type CashMovementType = (typeof CashMovementType)[keyof typeof CashMovementType];
+
+// ----------------- Expense Category -----------------
+
+export interface ExpenseCategory {
+  id: string;
+  companyId: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdBy?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface ExpenseCategoryCreateDTO {
+  name: string;
+  description?: string | null;
+}
+
+export interface ExpenseCategoryUpdateDTO {
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+// ----------------- Expense -----------------
+
+export interface Expense {
+  id: string;
+  companyId: string;
+  expenseNumber: string;
+  categoryId: string;
+  categoryNameSnapshot: string;
+  expenseDate: Date | string;
+  description: string;
+  payee?: string | null;
+  amount: number;
+  paymentMethod: ExpensePaymentMethod | string;
+  paymentAccountId?: string | null;
+  cashRegisterSessionId?: string | null;
+  referenceNumber?: string | null;
+  receiptReference?: string | null;
+  notes?: string | null;
+  status: ExpenseStatus | string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  postedBy?: string | null;
+  postedAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  category?: ExpenseCategory;
+}
+
+export interface ExpenseCreateDTO {
+  categoryId: string;
+  expenseDate?: string;
+  description: string;
+  payee?: string | null;
+  amount: number;
+  paymentMethod?: ExpensePaymentMethod | string;
+  paymentAccountId?: string | null;
+  cashRegisterSessionId?: string | null;
+  referenceNumber?: string | null;
+  receiptReference?: string | null;
+  notes?: string | null;
+  postImmediately?: boolean;
+}
+
+export interface ExpenseUpdateDTO {
+  categoryId?: string;
+  expenseDate?: string;
+  description?: string;
+  payee?: string | null;
+  amount?: number;
+  paymentMethod?: ExpensePaymentMethod | string;
+  paymentAccountId?: string | null;
+  cashRegisterSessionId?: string | null;
+  referenceNumber?: string | null;
+  receiptReference?: string | null;
+  notes?: string | null;
+}
+
+export interface ExpenseFilterDTO {
+  search?: string;
+  categoryId?: string;
+  paymentMethod?: string;
+  status?: ExpenseStatus | string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+// ----------------- Cash Register -----------------
+
+export interface CashRegister {
+  id: string;
+  companyId: string;
+  registerCode: string;
+  name: string;
+  locationId?: string | null;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CashRegisterCreateDTO {
+  registerCode?: string;
+  name: string;
+  locationId?: string | null;
+}
+
+export interface CashRegisterUpdateDTO {
+  name?: string;
+  locationId?: string | null;
+  isActive?: boolean;
+}
+
+// ----------------- Cash Register Session -----------------
+
+export interface CashRegisterSession {
+  id: string;
+  companyId: string;
+  cashRegisterId: string;
+  sessionNumber: string;
+  openedBy?: string | null;
+  openedAt: Date | string;
+  openingCash: number;
+  expectedCash: number;
+  countedCash?: number | null;
+  cashDifference?: number | null;
+  status: CashRegisterSessionStatus | string;
+  closedBy?: string | null;
+  closedAt?: Date | string | null;
+  closingNotes?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  cashRegister?: CashRegister;
+}
+
+export interface CashRegisterOpenSessionDTO {
+  cashRegisterId?: string;
+  openingCash: number;
+  openingNotes?: string | null;
+}
+
+export interface CashRegisterCloseSessionDTO {
+  countedCash: number;
+  closingNotes?: string | null;
+}
+
+export interface CashInOutDTO {
+  amount: number;
+  reason: string;
+  notes?: string | null;
+}
+
+// ----------------- Cash Movement -----------------
+
+export interface CashMovement {
+  id: string;
+  companyId: string;
+  cashRegisterId: string;
+  cashRegisterSessionId: string;
+  movementNumber: string;
+  movementType: CashMovementType | string;
+  amount: number;
+  movementDate: Date | string;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  referenceNumber?: string | null;
+  description?: string | null;
+  expenseId?: string | null;
+  createdBy?: string | null;
+  createdAt: Date | string;
+}
+
+// ----------------- Cashbook -----------------
+
+export interface CashbookEntry {
+  id: string;
+  date: Date | string;
+  movementNumber: string;
+  movementType: CashMovementType | string;
+  referenceType?: string | null;
+  referenceNumber?: string | null;
+  description?: string | null;
+  cashIn: number;
+  cashOut: number;
+  runningBalance: number;
+}
+
+export interface CashbookFilterDTO {
+  cashRegisterId?: string;
+  startDate?: string;
+  endDate?: string;
+  movementType?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CashbookSummary {
+  openingBalance: number;
+  totalCashIn: number;
+  totalCashOut: number;
+  closingBalance: number;
+}
+
+// ----------------- Day-End Closing -----------------
+
+export interface DayEndClosing {
+  id: string;
+  companyId: string;
+  cashRegisterId: string;
+  cashRegisterSessionId: string;
+  closingNumber: string;
+  businessDate: Date | string;
+  openingCash: number;
+  cashSales: number;
+  customerCashReceipts: number;
+  supplierCashPayments: number;
+  cashExpenses: number;
+  cashRefunds: number;
+  cashIn: number;
+  cashOut: number;
+  cashDeposits: number;
+  cashWithdrawals: number;
+  expectedCash: number;
+  countedCash: number;
+  cashDifference: number;
+  nonCashSales: number;
+  nonCashReceipts: number;
+  nonCashExpenses: number;
+  notes?: string | null;
+  status: string;
+  closedBy?: string | null;
+  closedAt: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  cashRegister?: CashRegister;
+  cashRegisterSession?: CashRegisterSession;
+}
+
+export interface DayEndClosingFilterDTO {
+  cashRegisterId?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface DayEndClosingPreview {
+  session: CashRegisterSession;
+  cashRegister: CashRegister;
+  openingCash: number;
+  cashSales: number;
+  customerCashReceipts: number;
+  supplierCashPayments: number;
+  cashExpenses: number;
+  cashRefunds: number;
+  cashIn: number;
+  cashOut: number;
+  cashDeposits: number;
+  cashWithdrawals: number;
+  expectedCash: number;
+  nonCashSales: number;
+  nonCashReceipts: number;
+  nonCashExpenses: number;
+  movementCount: number;
+}
+
+export interface FinancialDashboardKPIs {
+  expensesToday: number;
+  expensesThisMonth: number;
+  cashReceivedToday: number;
+  cashPaidToday: number;
+  currentExpectedCash: number;
+  unclosedSessionsCount: number;
+  activeSessionId?: string | null;
+  recentDifference: number;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 8: Business Reports & Analytics Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Date Range Filter ─────────────────────────────────────────────────────────
+
+export type ReportPeriod =
+  | 'today'
+  | 'yesterday'
+  | 'this_week'
+  | 'this_month'
+  | 'prev_month'
+  | 'this_year'
+  | 'prev_year'
+  | 'custom';
+
+export interface DateRangeFilter {
+  period?: ReportPeriod;
+  startDate?: string; // ISO date string YYYY-MM-DD
+  endDate?: string;   // ISO date string YYYY-MM-DD
+  page?: number;
+  pageSize?: number;
+}
+
+// ── Sales Reports ─────────────────────────────────────────────────────────────
+
+export interface SalesReportSummary {
+  invoiceCount: number;
+  grossSales: number;
+  lineDiscountTotal: number;
+  invoiceDiscountTotal: number;
+  totalDiscounts: number;
+  salesReturns: number;
+  netSales: number;
+  totalTax: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  averageInvoiceValue: number;
+  salesByPaymentMethod: { method: string; amount: number; count: number }[];
+  returnCount: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface SalesInvoiceReportRow {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: Date | string;
+  customerName: string | null;
+  subtotal: number;
+  lineDiscountTotal: number;
+  invoiceDiscount: number;
+  taxAmount: number;
+  grandTotal: number;
+  amountPaid: number;
+  outstanding: number;
+  paymentStatus: string;
+  status: string;
+}
+
+export interface ProductSalesReportRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  barcode: string | null;
+  quantitySold: number;
+  returnedQuantity: number;
+  netQuantitySold: number;
+  grossSales: number;
+  discountAmount: number;
+  netSales: number;
+  cogsSold: number | null;
+  grossProfit: number | null;
+  grossProfitMargin: number | null;
+  hasCostData: boolean;
+}
+
+export interface CategorySalesReportRow {
+  categoryId: string | null;
+  categoryName: string;
+  quantitySold: number;
+  netSales: number;
+  sharePercent: number;
+}
+
+export interface CustomerSalesReportRow {
+  customerId: string | null;
+  customerName: string;
+  invoiceCount: number;
+  grossSales: number;
+  salesReturns: number;
+  netSales: number;
+  paymentsReceived: number;
+  outstandingBalance: number;
+}
+
+export interface PaymentCollectionRow {
+  id: string;
+  paymentNumber: string;
+  paymentDate: Date | string;
+  customerName: string | null;
+  invoiceNumber: string | null;
+  paymentMode: string;
+  amount: number;
+  referenceNo: string | null;
+  notes: string | null;
+}
+
+export interface SalesReportFilters extends DateRangeFilter {
+  customerId?: string;
+  paymentMode?: string;
+  status?: string;
+  productId?: string;
+  categoryId?: string;
+}
+
+// ── Purchase Reports ──────────────────────────────────────────────────────────
+
+export interface PurchaseReportSummary {
+  invoiceCount: number;
+  grossPurchases: number;
+  lineDiscountTotal: number;
+  invoiceDiscountTotal: number;
+  totalDiscounts: number;
+  purchaseReturns: number;
+  netPurchases: number;
+  totalTax: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  totalPaymentsMade: number;
+  totalOutstanding: number;
+  averageInvoiceValue: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface PurchaseInvoiceReportRow {
+  id: string;
+  purchaseNumber: string;
+  purchaseDate: Date | string;
+  supplierName: string;
+  subtotal: number;
+  lineDiscountTotal: number;
+  invoiceDiscount: number;
+  taxAmount: number;
+  grandTotal: number;
+  amountPaid: number;
+  outstanding: number;
+  paymentStatus: string;
+  status: string;
+}
+
+export interface ProductPurchaseReportRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  quantityPurchased: number;
+  returnQuantity: number;
+  netQuantityReceived: number;
+  grossPurchaseValue: number;
+  discountAmount: number;
+  netPurchaseValue: number;
+  avgUnitCost: number | null;
+}
+
+export interface SupplierReportRow {
+  supplierId: string;
+  supplierName: string;
+  purchaseCount: number;
+  grossPurchases: number;
+  purchaseReturns: number;
+  netPurchases: number;
+  paymentsMade: number;
+  outstandingBalance: number;
+}
+
+export interface PurchaseReportFilters extends DateRangeFilter {
+  supplierId?: string;
+  status?: string;
+  productId?: string;
+}
+
+// ── Inventory Reports ─────────────────────────────────────────────────────────
+
+export interface InventoryCurrentStockRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  barcode: string | null;
+  categoryName: string | null;
+  unitName: string | null;
+  brandName: string | null;
+  currentStock: number;
+  minimumStock: number;
+  stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'NEGATIVE';
+  purchasePrice: number;
+  sellingPrice: number;
+  estimatedValue: number;
+  hasCostData: boolean;
+  trackStock: boolean;
+}
+
+export interface LowStockReportRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  categoryName: string | null;
+  unitName: string | null;
+  currentStock: number;
+  minimumStock: number;
+  shortfall: number;
+}
+
+export interface OutOfStockReportRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  categoryName: string | null;
+  currentStock: number;
+  isNegative: boolean;
+  minimumStock: number;
+}
+
+export interface StockMovementReportRow {
+  id: string;
+  movementDate: Date | string;
+  productName: string;
+  sku: string | null;
+  movementType: string;
+  referenceType: string | null;
+  referenceNumber: string | null;
+  quantityIn: number;
+  quantityOut: number;
+  unitCost: number;
+  notes: string | null;
+  createdBy: string | null;
+}
+
+export interface InventoryValuationRow {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  categoryName: string | null;
+  unitName: string | null;
+  currentStock: number;
+  unitCost: number;
+  estimatedValue: number;
+  hasCostData: boolean;
+  costSource: 'PURCHASE_PRICE' | 'OPENING_STOCK_RATE' | 'NONE';
+}
+
+export interface InventoryValuationSummary {
+  rows: InventoryValuationRow[];
+  totalEstimatedValue: number;
+  totalProducts: number;
+  productsWithCostData: number;
+  productsWithoutCostData: number;
+  valuationDate: string;
+  methodology: string;
+  limitation: string | null;
+}
+
+export interface StockAdjustmentReportRow {
+  adjustmentId: string;
+  adjustmentNumber: string;
+  adjustmentDate: Date | string;
+  productName: string;
+  sku: string | null;
+  locationName: string;
+  adjustmentType: string;
+  systemQuantity: number;
+  differenceQuantity: number;
+  reason: string;
+  createdBy: string | null;
+  unitCost: number;
+}
+
+export interface InventoryReportFilters extends DateRangeFilter {
+  categoryId?: string;
+  brandId?: string;
+  stockStatus?: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'ALL';
+  productId?: string;
+  movementType?: string;
+}
+
+// ── Profit & Loss Report ──────────────────────────────────────────────────────
+
+export interface ProfitLossReportSection {
+  label: string;
+  amount: number;
+}
+
+export interface ExpenseCategoryBreakdown {
+  categoryName: string;
+  amount: number;
+  count: number;
+}
+
+export interface ProfitLossReport {
+  // Revenue
+  grossSales: number;
+  salesDiscounts: number;
+  salesReturns: number;
+  netSales: number;
+
+  // COGS
+  grossCOGS: number;
+  cogsReturnReversal: number;
+  netCOGS: number;
+  hasCostData: boolean;
+  partialCostData: boolean;
+  itemsWithMissingCost: number;
+  totalItemsSold: number;
+
+  // Gross Profit
+  grossProfit: number;
+  grossProfitMargin: number | null; // null if netSales === 0
+
+  // Operating Expenses
+  expensesByCategory: ExpenseCategoryBreakdown[];
+  totalOperatingExpenses: number;
+
+  // Estimated Operating Result
+  estimatedOperatingResult: number;
+  operatingMargin: number | null; // null if netSales === 0
+
+  // Disclosures
+  startDate: string;
+  endDate: string;
+  limitations: string[];
+  isComplete: boolean; // false = missing cost data or partial
+}
+
+// ── Receivables & Payables Reports ───────────────────────────────────────────
+
+export interface CustomerOutstandingRow {
+  customerId: string;
+  customerName: string;
+  customerCode: string;
+  phone: string | null;
+  openingBalance: number;
+  openingBalanceType: string;
+  salesInPeriod: number;
+  salesReturnsInPeriod: number;
+  paymentsReceivedInPeriod: number;
+  closingBalance: number;
+  balanceType: 'RECEIVABLE' | 'ADVANCE' | 'ZERO';
+}
+
+export interface SupplierOutstandingRow {
+  supplierId: string;
+  supplierName: string;
+  supplierCode: string;
+  phone: string | null;
+  openingBalance: number;
+  openingBalanceType: string;
+  purchasesInPeriod: number;
+  purchaseReturnsInPeriod: number;
+  paymentsMadeInPeriod: number;
+  closingBalance: number;
+  balanceType: 'PAYABLE' | 'ADVANCE' | 'ZERO';
+}
+
+export interface OutstandingReportFilters {
+  asOfDate?: string; // ISO date string; defaults to today
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}
+
+// ── Cash & Expense Reports ────────────────────────────────────────────────────
+
+export interface ExpenseSummaryRow {
+  categoryId: string;
+  categoryName: string;
+  expenseCount: number;
+  totalAmount: number;
+  cashAmount: number;
+  nonCashAmount: number;
+}
+
+export interface ExpenseSummaryReport {
+  rows: ExpenseSummaryRow[];
+  totalExpenses: number;
+  totalCash: number;
+  totalNonCash: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface CashbookReportRow {
+  id: string;
+  movementDate: Date | string;
+  movementType: string;
+  referenceNumber: string | null;
+  description: string | null;
+  cashIn: number;
+  cashOut: number;
+  runningBalance: number;
+  sessionNumber: string | null;
+}
+
+export interface CashbookReportSummary {
+  rows: CashbookReportRow[];
+  openingBalance: number;
+  totalCashIn: number;
+  totalCashOut: number;
+  closingBalance: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface RegisterClosingReportRow {
+  id: string;
+  closingNumber: string;
+  businessDate: Date | string;
+  registerName: string;
+  sessionNumber: string;
+  openingCash: number;
+  cashSales: number;
+  customerCashReceipts: number;
+  supplierCashPayments: number;
+  cashExpenses: number;
+  cashRefunds: number;
+  cashIn: number;
+  cashOut: number;
+  expectedCash: number;
+  countedCash: number;
+  cashDifference: number;
+  closedBy: string | null;
+  closedAt: Date | string;
+  status: 'MATCHED' | 'SURPLUS' | 'SHORTAGE';
+}
+
+export interface ExpenseReportFilters extends DateRangeFilter {
+  categoryId?: string;
+  paymentMethod?: string;
+}
+
+// ── Tax Summary Report ────────────────────────────────────────────────────────
+
+export interface TaxRateBreakdown {
+  taxRate: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  cessAmount: number;
+  totalTax: number;
+  invoiceCount: number;
+}
+
+export interface TaxSummaryReport {
+  // Sales
+  taxableSales: number;
+  salesCGST: number;
+  salesSGST: number;
+  salesIGST: number;
+  salesCess: number;
+  totalSalesTax: number;
+  salesReturnTaxReversal: number;
+  netSalesTax: number;
+
+  // Purchases
+  taxablePurchases: number;
+  purchaseCGST: number;
+  purchaseSGST: number;
+  purchaseIGST: number;
+  purchaseCess: number;
+  totalPurchaseTax: number;
+  purchaseReturnTaxReversal: number;
+  netPurchaseTax: number;
+
+  // Net
+  netTaxLiability: number;
+
+  // Breakdown by rate
+  salesByRate: TaxRateBreakdown[];
+  purchasesByRate: TaxRateBreakdown[];
+
+  startDate: string;
+  endDate: string;
+  disclaimer: string;
+}
+
+export interface TaxReportFilters extends DateRangeFilter {
+  taxRate?: number;
+}
+
+// ── Business Dashboard KPIs ───────────────────────────────────────────────────
+
+export interface BusinessDashboardKPIs {
+  // Period info
+  startDate: string;
+  endDate: string;
+  period: string;
+
+  // Sales
+  grossSales: number;
+  salesReturns: number;
+  netSales: number;
+  salesInvoiceCount: number;
+  averageInvoiceValue: number;
+
+  // Purchases
+  grossPurchases: number;
+  purchaseReturns: number;
+  netPurchases: number;
+  purchaseInvoiceCount: number;
+
+  // Expenses
+  totalExpenses: number;
+  expensesByCategory: { categoryName: string; amount: number }[];
+
+  // Profitability
+  grossCOGS: number;
+  grossProfit: number;
+  grossProfitMargin: number | null;
+  hasCostData: boolean;
+
+  // Receivables (as-of end date)
+  totalReceivables: number;
+  customersWithBalance: number;
+
+  // Payables (as-of end date)
+  totalPayables: number;
+  suppliersWithBalance: number;
+
+  // Inventory (current snapshot)
+  totalStockValue: number;
+  totalStockItems: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+
+  // Cash (from register)
+  cashSalesInPeriod: number;
+  cashExpensesInPeriod: number;
+  cashCollectionsInPeriod: number;
+  currentCashInDrawer: number | null;
+  activeSessionId: string | null;
+}
+
+// ── Chart Data Types ──────────────────────────────────────────────────────────
+
+export interface TrendDataPoint {
+  date: string;       // 'YYYY-MM-DD' or 'MMM YYYY'
+  sales: number;
+  purchases: number;
+  expenses: number;
+  grossProfit: number | null;
+}
+
+export interface CategoryShareDataPoint {
+  name: string;
+  value: number;
+  percent: number;
+}
+
+export interface TopProductDataPoint {
+  productName: string;
+  sku: string | null;
+  quantity: number;
+  netSales: number;
+  grossProfit: number | null;
+}
+
+export interface PaymentMethodDataPoint {
+  method: string;
+  amount: number;
+  count: number;
+  percent: number;
+}
+
+export interface DashboardChartsData {
+  salesTrend: TrendDataPoint[];
+  categoryShare: CategoryShareDataPoint[];
+  topProductsByQuantity: TopProductDataPoint[];
+  topProductsByValue: TopProductDataPoint[];
+  paymentMethodDistribution: PaymentMethodDataPoint[];
+  lowStockProducts: LowStockReportRow[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 9: Settings, Users, Permissions & Business Configuration Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CompanyProfileDTO {
+  businessName: string;
+  businessType?: string | null;
+  ownerName?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+  website?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  country?: string | null;
+  gstRegistered: boolean;
+  gstin?: string | null;
+  pan?: string | null;
+  taxType?: string | null;
+  invoicePrefix?: string | null;
+  logoPath?: string | null;
+  defaultInvoiceFooter?: string | null;
+  defaultTerms?: string | null;
+}
+
+export interface InvoiceReceiptSettingsDTO {
+  invoicePrefix: string;
+  purchasePrefix: string;
+  salesReturnPrefix: string;
+  purchaseReturnPrefix: string;
+  expensePrefix: string;
+  startingInvoiceNumber: number;
+  invoicePrintFormat: 'thermal' | 'standard_a4';
+  thermalPaperSize: '58mm' | '80mm';
+  selectedPrinter?: string;
+  printCopies: number;
+  showLogoOnInvoice: boolean;
+  showAddressOnInvoice: boolean;
+  showGstinOnInvoice: boolean;
+  showCustomerContactOnInvoice: boolean;
+  showSkuBarcodeOnInvoice: boolean;
+  showDiscountOnInvoice: boolean;
+  showTaxBreakdownOnInvoice: boolean;
+  showPaymentInfoOnInvoice: boolean;
+  showTermsOnInvoice: boolean;
+  invoiceFooterText: string;
+  invoiceTermsAndConditions: string;
+}
+
+export interface CurrencyFormattingSettingsDTO {
+  currency: string;
+  currencySymbol: string;
+  currencySymbolPlacement: 'BEFORE' | 'AFTER';
+  currencyDecimalPlaces: number;
+  quantityDecimalPlaces: number;
+  thousandsSeparator: string;
+  decimalSeparator: string;
+  dateFormat: string;
+  timeFormat: '12h' | '24h';
+}
+
+export interface TaxPricingSettingsDTO {
+  defaultTaxInclusive: boolean;
+  defaultTaxRate: number;
+  defaultTaxDisplay: 'ITEMIZED' | 'SUMMARY';
+  priceDecimalPrecision: number;
+  discountDisplayPreference: 'PERCENTAGE' | 'FLAT';
+  allowPriceOverride: boolean;
+  allowInvoiceDiscount: boolean;
+  allowSellBelowCost: boolean;
+}
+
+export interface InventorySettingsDTO {
+  allowNegativeStock: boolean;
+  defaultStockLocationId?: string;
+  defaultAdjustmentReason: string;
+  lowStockThresholdDefault: number;
+  showInactiveProductsInSearch: boolean;
+  enableBarcodeScanning: boolean;
+  showProductCostToCashiers: boolean;
+}
+
+export interface ApplicationPreferencesDTO {
+  theme: 'dark' | 'light' | 'system';
+  startPage: string;
+  defaultSalesScreen: 'standard' | 'pos_touch';
+  defaultCustomerId?: string;
+  confirmBeforePost: boolean;
+  confirmBeforeDelete: boolean;
+  soundOnScan: boolean;
+  autoBackupOnClose: boolean;
+}
+
+export interface RoleCreateDTO {
+  name: string;
+  description?: string;
+  permissionCodes: string[];
+}
+
+export interface RoleUpdateDTO {
+  name?: string;
+  description?: string;
+  permissionCodes?: string[];
+}
+
+export interface PermissionDefinition {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  module: string;
+}
+
+export interface RoleWithPermissionsDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystemRole: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  permissions: {
+    id: string;
+    permission: PermissionDefinition;
+  }[];
+  userCount?: number;
+}
+
+export interface PermissionMatrixModule {
+  module: string;
+  permissions: {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    assigned: boolean;
+  }[];
+}
+
+export interface BackupFileInfo {
+  filename: string;
+  filePath: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface BackupCreateResult {
+  success: boolean;
+  filePath: string;
+  sizeBytes: number;
+  timestamp: string;
+  error?: string;
+}
+
+export interface RestoreResult {
+  success: boolean;
+  safetyBackupPath?: string;
+  restoredTablesCount?: number;
+  timestamp: string;
+  error?: string;
+}
+
+export interface SystemInfoDTO {
+  productName: string;
+  companyName: string;
+  appVersion: string;
+  schemaVersion: string;
+  platform: string;
+  isOffline: boolean;
+  databasePath: string;
+  backupPath: string;
+  logsPath: string;
+  nodeVersion: string;
+  electronVersion: string;
+}
 
 
