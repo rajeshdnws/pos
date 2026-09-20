@@ -15,6 +15,9 @@ import {
   Info,
   Database,
   KeyRound,
+  Sparkles,
+  MessageSquare,
+  Gift,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -23,6 +26,9 @@ export const SettingsIndexPage: React.FC = () => {
 
   const navLinks = [
     { to: '/settings/business', label: 'Company Profile', icon: Building2, permission: 'settings.view' },
+    { to: '/settings/loyalty', label: 'Loyalty & Wallet', icon: Gift, permission: 'loyalty.view' },
+    { to: '/communication', label: 'Communication Settings', icon: MessageSquare, permission: 'communication.view' },
+    { to: '/promotions', label: 'Promotions & Coupons', icon: Sparkles, permission: 'promotions.view' },
     { to: '/settings/license', label: 'Product License', icon: KeyRound, permission: 'settings.view' },
     { to: '/settings/invoice', label: 'Invoice & Printing', icon: Receipt, permission: 'settings.view' },
     { to: '/settings/currency', label: 'Currency & Formats', icon: Coins, permission: 'settings.view' },

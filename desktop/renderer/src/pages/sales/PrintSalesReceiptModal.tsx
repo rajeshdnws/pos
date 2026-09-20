@@ -179,6 +179,12 @@ export const PrintSalesReceiptModal: React.FC<PrintSalesReceiptModalProps> = ({
                   <span className="font-mono">-₹{invoice.invoiceDiscount.toFixed(2)}</span>
                 </div>
               )}
+              {invoice.pointsDiscount && invoice.pointsDiscount > 0 ? (
+                <div className="flex justify-between text-gray-700">
+                  <span>Loyalty Discount ({invoice.pointsRedeemed || 0} pts):</span>
+                  <span className="font-mono">-₹{invoice.pointsDiscount.toFixed(2)}</span>
+                </div>
+              ) : null}
               {invoice.cgstAmount > 0 && (
                 <div className="flex justify-between text-gray-600">
                   <span>CGST:</span>
@@ -220,6 +226,27 @@ export const PrintSalesReceiptModal: React.FC<PrintSalesReceiptModalProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Loyalty Rewards Summary Section */}
+            {((invoice.pointsEarned && invoice.pointsEarned > 0) || (invoice.pointsRedeemed && invoice.pointsRedeemed > 0)) && (
+              <div className="pt-2 pb-1 border-b border-dashed border-gray-400 space-y-0.5 text-xs text-gray-800">
+                <div className="font-bold text-center text-[10px] uppercase tracking-wider text-gray-900 pb-0.5">
+                  *** LOYALTY REWARDS ***
+                </div>
+                {invoice.pointsRedeemed && invoice.pointsRedeemed > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Points Redeemed:</span>
+                    <span className="font-mono font-bold">-{invoice.pointsRedeemed} Pts</span>
+                  </div>
+                ) : null}
+                {invoice.pointsEarned && invoice.pointsEarned > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Points Earned Today:</span>
+                    <span className="font-mono font-bold text-green-700">+{invoice.pointsEarned} Pts</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {/* Footer Message */}
             <div className="pt-3 text-center space-y-1 text-[10px] text-gray-700">

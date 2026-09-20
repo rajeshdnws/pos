@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Barcode,
   Search,
@@ -18,6 +18,10 @@ import {
   Receipt,
   X,
   Loader2,
+  Ticket,
+  Sparkles,
+  Gift,
+  Coins,
 } from 'lucide-react';
 import {
   Customer,
@@ -25,11 +29,15 @@ import {
   SalesInvoice,
   SalesInvoiceCreateDTO,
   SalesPostDTO,
+  CouponDTO,
+  CustomerWalletDTO,
+  LoyaltySettingsDTO,
 } from '@rs-inventory/types';
 import { formatCurrency, formatDate } from '@rs-inventory/business';
 import { useNotificationStore } from '../../store/notificationStore';
 import { CustomerModal } from '../customers/CustomerModal';
 import { PrintSalesReceiptModal } from './PrintSalesReceiptModal';
+import { IssueNextBillCouponModal } from './IssueNextBillCouponModal';
 
 export interface POSCartItem {
   productId: string;
@@ -56,9 +64,13 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
   const { notify } = useNotificationStore();
 
   // Active Customer
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [isCustomerSearching, setIsCustomerSearching] = useState(false);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const customerSearchRef = useRef<HTMLDivElement>(null);
 
   // Barcode & Product Search
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -89,30 +101,121 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
   const [onHoldDrafts, setOnHoldDrafts] = useState<SalesInvoice[]>([]);
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
 
+  // Step 11: Promotional Coupons
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponDTO | null>(null);
+  const [couponDiscountAmount, setCouponDiscountAmount] = useState<number>(0);
+  const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [isIssueNextBillModalOpen, setIsIssueNextBillModalOpen] = useState(false);
+
+  // Step 12: Customer Loyalty & Points Redemption
+  const [customerWallet, setCustomerWallet] = useState<CustomerWalletDTO | null>(null);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettingsDTO | null>(null);
+  const [pointsToRedeemInput, setPointsToRedeemInput] = useState<string>('');
+  const [appliedPointsRedeemed, setAppliedPointsRedeemed] = useState<number>(0);
+  const [pointsDiscountAmount, setPointsDiscountAmount] = useState<number>(0);
+  const [loyaltyMessage, setLoyaltyMessage] = useState<string | null>(null);
+  const [isValidatingPoints, setIsValidatingPoints] = useState<boolean>(false);
+  const [anticipatedPoints, setAnticipatedPoints] = useState<number>(0);
+
   useEffect(() => {
-    loadCustomers();
     loadDrafts();
     if (barcodeRef.current) {
       barcodeRef.current.focus();
     }
+    window.rsInventory.getLoyaltySettings().then((res) => {
+      if (res.success && res.data) setLoyaltySettings(res.data);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      window.rsInventory.getCustomerWallet(selectedCustomer.id).then((res) => {
+        if (res.success && res.data) setCustomerWallet(res.data);
+        else setCustomerWallet(null);
+      }).catch(() => setCustomerWallet(null));
+    } else {
+      setCustomerWallet(null);
+      setAppliedPointsRedeemed(0);
+      setPointsDiscountAmount(0);
+      setPointsToRedeemInput('');
+      setLoyaltyMessage(null);
+    }
+  }, [selectedCustomer]);
+
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) {
+        setIsCustomerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
     if (initialCustomerId) {
-      setSelectedCustomerId(initialCustomerId);
+      // Load the specific customer by ID when coming from another page
+      window.rsInventory
+        .getCustomer(initialCustomerId)
+        .then((res) => {
+          if (res.success && res.data) setSelectedCustomer(res.data);
+        })
+        .catch(() => {});
     }
   }, [initialCustomerId]);
 
-  const loadCustomers = async () => {
-    try {
-      const res = await window.rsInventory.listCustomers({ pageSize: 100, isActive: true });
-      if (res.success && res.data) {
-        setCustomers(res.data.items);
-      }
-    } catch {
-      // ignore
+  // Debounced customer live search
+  const searchCustomers = useCallback((query: string) => {
+    setCustomerSearch(query);
+    if (!query.trim()) {
+      setCustomerResults([]);
+      setIsCustomerDropdownOpen(false);
+      return;
     }
+    setIsCustomerDropdownOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!customerSearch.trim()) return;
+    const timer = setTimeout(async () => {
+      setIsCustomerSearching(true);
+      try {
+        const res = await window.rsInventory.listCustomers({
+          search: customerSearch.trim(),
+          isActive: true,
+          pageSize: 10,
+        });
+        if (res.success && res.data) {
+          setCustomerResults(res.data.items);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsCustomerSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
+
+  const selectCustomer = (cust: Customer) => {
+    setSelectedCustomer(cust);
+    setCustomerSearch('');
+    setCustomerResults([]);
+    setIsCustomerDropdownOpen(false);
+    barcodeRef.current?.focus();
   };
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerSearch('');
+    setCustomerResults([]);
+  };
+
+  // Keep selectedCustomerId in sync for the sale DTO
+  const selectedCustomerId = selectedCustomer?.id ?? '';
 
   const loadDrafts = async () => {
     try {
@@ -270,7 +373,119 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
     setCart([]);
     setBillDiscountValue(0);
     setNotes('');
+    setCouponCode('');
+    setAppliedCoupon(null);
+    setCouponDiscountAmount(0);
+    setCouponMessage(null);
+    setPointsToRedeemInput('');
+    setAppliedPointsRedeemed(0);
+    setPointsDiscountAmount(0);
+    setLoyaltyMessage(null);
     barcodeRef.current?.focus();
+  };
+
+  // Step 11: Coupon application & removal handlers
+  const handleApplyCoupon = async () => {
+    const trimmed = couponCode.trim();
+    if (!trimmed) return;
+    setIsValidatingCoupon(true);
+    setCouponMessage(null);
+
+    try {
+      let subtotal = 0;
+      cart.forEach((item) => {
+        subtotal += item.quantity * item.unitPrice;
+      });
+
+      const res = await window.rsInventory.validateCoupon({
+        code: trimmed,
+        customerId: selectedCustomer?.id || null,
+        subtotal,
+        items: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          sellingRate: item.unitPrice,
+        })),
+      });
+
+      if (res.success && res.data && res.data.isValid) {
+        setAppliedCoupon(res.data.coupon || null);
+        setCouponDiscountAmount(res.data.discountAmount);
+        setCouponMessage(`Applied: ₹${res.data.discountAmount.toFixed(2)} discount`);
+        notify('success', `Coupon ${trimmed.toUpperCase()} applied!`);
+      } else {
+        setAppliedCoupon(null);
+        setCouponDiscountAmount(0);
+        setCouponMessage(res.data?.message || 'Invalid coupon');
+        notify('error', res.data?.message || 'Invalid coupon');
+      }
+    } catch (err: any) {
+      notify('error', err.message || 'Error validating coupon');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setAppliedCoupon(null);
+    setCouponDiscountAmount(0);
+    setCouponMessage(null);
+    notify('info', 'Coupon removed from current cart');
+  };
+
+  // Step 12: Loyalty Points redemption handlers
+  const handleApplyPoints = async () => {
+    if (!selectedCustomer) {
+      notify('error', 'Select a registered customer to redeem points.');
+      return;
+    }
+    const pointsNum = parseFloat(pointsToRedeemInput);
+    if (isNaN(pointsNum) || pointsNum <= 0) {
+      notify('error', 'Enter a valid points amount to redeem.');
+      return;
+    }
+
+    setIsValidatingPoints(true);
+    setLoyaltyMessage(null);
+    try {
+      let subtotal = 0;
+      cart.forEach((item) => {
+        subtotal += item.quantity * item.unitPrice;
+      });
+
+      const res = await window.rsInventory.validateLoyaltyRedemption({
+        customerId: selectedCustomer.id,
+        billSubtotal: subtotal,
+        requestedPoints: pointsNum,
+      });
+
+      if (res.success && res.data) {
+        if (res.data.isValid) {
+          setAppliedPointsRedeemed(res.data.pointsToRedeem);
+          setPointsDiscountAmount(res.data.discountAmount);
+          setLoyaltyMessage(`Applied: ₹${res.data.discountAmount.toFixed(2)} points discount`);
+          notify('success', `Applied ${res.data.pointsToRedeem} points (₹${res.data.discountAmount.toFixed(2)} off)!`);
+        } else {
+          setAppliedPointsRedeemed(0);
+          setPointsDiscountAmount(0);
+          setLoyaltyMessage(res.data.message || 'Points redemption ineligible');
+          notify('error', res.data.message || 'Points redemption ineligible');
+        }
+      }
+    } catch (err: any) {
+      notify('error', err.message || 'Error validating points redemption');
+    } finally {
+      setIsValidatingPoints(false);
+    }
+  };
+
+  const handleRemovePoints = () => {
+    setPointsToRedeemInput('');
+    setAppliedPointsRedeemed(0);
+    setPointsDiscountAmount(0);
+    setLoyaltyMessage(null);
+    notify('info', 'Points redemption removed');
   };
 
   // Local Fast Totals Calculation
@@ -299,7 +514,8 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
       billDiscount = Math.min(taxableBeforeBillDisc, billDiscountValue || 0);
     }
 
-    const totalDiscount = itemDiscounts + billDiscount;
+    // Include coupon discount and points discount in total discount
+    const totalDiscount = itemDiscounts + billDiscount + couponDiscountAmount + pointsDiscountAmount;
     const taxableTotal = Math.max(0, subtotal - totalDiscount);
     const unroundedGrandTotal = taxableTotal + totalTax;
     const grandTotal = Math.round(unroundedGrandTotal);
@@ -330,8 +546,43 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
 
   const totals = calculateTotals();
 
-  // Customer selection helper
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+  useEffect(() => {
+    if (selectedCustomer && loyaltySettings?.enabled && cart.length > 0) {
+      let sub = 0;
+      cart.forEach((i) => {
+        sub += i.quantity * i.unitPrice;
+      });
+      window.rsInventory
+        .calculateLoyaltyEarn({
+          customerId: selectedCustomer.id,
+          subtotal: sub,
+          isDiscounted: totals.totalDiscount > 0,
+        })
+        .then((res) => {
+          if (res.success && res.data) {
+            setAnticipatedPoints(res.data.pointsEarned);
+          }
+        })
+        .catch(() => setAnticipatedPoints(0));
+    } else {
+      setAnticipatedPoints(0);
+    }
+  }, [selectedCustomer, loyaltySettings, cart, totals.totalDiscount]);
+
+  // Customer display helper (used in hold-resume)
+  // Kept for compatibility — draft resume sets customer by object if available
+  const handleResumeDraftWithCustomer = async (draft: SalesInvoice) => {
+    if (draft.customerId) {
+      try {
+        const res = await window.rsInventory.getCustomer(draft.customerId);
+        if (res.success && res.data) setSelectedCustomer(res.data);
+      } catch {
+        // ignore
+      }
+    } else {
+      setSelectedCustomer(null);
+    }
+  };
 
   // Open Payment Modal
   const openPaymentModal = (mode: 'CASH' | 'UPI' | 'CARD' | 'CREDIT') => {
@@ -355,6 +606,11 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
         invoiceDate: new Date().toISOString(),
         invoiceDiscount: totals.totalDiscount,
         notes: notes ? `[ON-HOLD] ${notes}` : '[ON-HOLD]',
+        couponId: appliedCoupon?.id || null,
+        couponCode: appliedCoupon?.code || null,
+        couponDiscount: couponDiscountAmount,
+        pointsRedeemed: appliedPointsRedeemed,
+        pointsDiscount: pointsDiscountAmount,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -385,7 +641,7 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
       }
     }
 
-    setSelectedCustomerId(draft.customerId || '');
+    handleResumeDraftWithCustomer(draft);
     setIsInterstate(Boolean(draft.igstAmount && draft.igstAmount > 0));
     setBillDiscountValue(draft.invoiceDiscount || 0);
     setDiscountType('FLAT');
@@ -429,6 +685,11 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
         invoiceDate: new Date().toISOString(),
         invoiceDiscount: totals.totalDiscount,
         notes: notes.trim() || undefined,
+        couponId: appliedCoupon?.id || null,
+        couponCode: appliedCoupon?.code || null,
+        couponDiscount: couponDiscountAmount,
+        pointsRedeemed: appliedPointsRedeemed,
+        pointsDiscount: pointsDiscountAmount,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -468,7 +729,6 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
         setIsPrintModalOpen(true);
         clearCart();
         loadDrafts();
-        loadCustomers();
       } else {
         throw new Error(postRes.error?.message || 'Failed to post sales invoice');
       }
@@ -746,7 +1006,7 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
 
       {/* RIGHT COLUMN: Customer Card, Bill Settings, Totals & Pay Tender (37% width) */}
       <div className="w-full lg:w-[37%] space-y-4">
-        {/* Customer Selector Card */}
+        {/* Customer Search Combobox Card */}
         <div className="p-4 rounded-2xl bg-surface-900 border border-surface-800 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -762,44 +1022,121 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
             </button>
           </div>
 
-          <div className="space-y-2">
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500"
-            >
-              <option value="">Walk-in Customer (Retail Cash)</option>
-              {customers.map((cust) => (
-                <option key={cust.id} value={cust.id}>
-                  {cust.name} ({cust.customerCode}) • Bal: ₹{cust.currentBalance?.toFixed(2) || '0.00'}
-                </option>
-              ))}
-            </select>
-
-            {/* Selected customer quick badge */}
-            {selectedCustomer && (
-              <div className="p-2.5 rounded-xl bg-surface-950/60 border border-surface-800 flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-semibold text-white">{selectedCustomer.name}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    Phone: {selectedCustomer.phone || 'N/A'} • GST: {selectedCustomer.gstin || 'None'}
+          {/* Live Search Input */}
+          <div className="space-y-2" ref={customerSearchRef}>
+            {selectedCustomer ? (
+              /* Selected Customer Badge */
+              <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-semibold text-white text-xs truncate">{selectedCustomer.name}</div>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                    {selectedCustomer.customerCode}
+                    {selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ''}
                   </div>
+                  <div className="text-[10px] mt-0.5 flex items-center gap-1">
+                    <span className="text-slate-500">Khata Bal:</span>
+                    <span
+                      className={`font-mono font-bold ${
+                        (selectedCustomer.currentBalance ?? 0) > 0
+                          ? 'text-rose-400'
+                          : (selectedCustomer.currentBalance ?? 0) < 0
+                          ? 'text-emerald-400'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      ₹{(selectedCustomer.currentBalance ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                  {customerWallet && (
+                    <div className="text-[10px] mt-0.5 flex items-center gap-1 font-medium">
+                      <span className="text-amber-400 flex items-center gap-0.5">
+                        <Gift className="h-3 w-3" />
+                        Loyalty:
+                      </span>
+                      <span className="font-mono font-bold text-amber-300">
+                        {customerWallet.cachedAvailablePoints} Pts
+                      </span>
+                      <span className="text-slate-500">
+                        (≈ ₹{(customerWallet.cachedAvailablePoints * (loyaltySettings?.redemptionValue || 1)).toFixed(2)})
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 block">Khata Bal:</span>
-                  <span
-                    className={`font-mono font-bold ${
-                      selectedCustomer.currentBalance > 0
-                        ? 'text-rose-400'
-                        : selectedCustomer.currentBalance < 0
-                        ? 'text-emerald-400'
-                        : 'text-slate-300'
-                    }`}
-                  >
-                    {formatCurrency(selectedCustomer.currentBalance || 0)}
-                  </span>
-                </div>
+                <button
+                  onClick={clearCustomer}
+                  title="Remove customer"
+                  className="shrink-0 p-0.5 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
+            ) : (
+              /* Search Input */
+              <div className="relative">
+                <div className="absolute left-3 top-2.5 text-slate-500 pointer-events-none">
+                  {isCustomerSearching ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Search className="h-3.5 w-3.5" />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => searchCustomers(e.target.value)}
+                  onFocus={() => {
+                    if (customerSearch.trim()) setIsCustomerDropdownOpen(true);
+                  }}
+                  placeholder="Search name, phone or code…"
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+                />
+
+                {/* Dropdown results */}
+                {isCustomerDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-surface-900 border border-surface-700 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-surface-800">
+                    {customerResults.length === 0 && !isCustomerSearching && customerSearch.trim() && (
+                      <div className="px-4 py-3 text-xs text-slate-500 text-center">
+                        No customers found for &ldquo;{customerSearch}&rdquo;
+                      </div>
+                    )}
+                    {customerResults.map((cust) => (
+                      <button
+                        key={cust.id}
+                        type="button"
+                        onClick={() => selectCustomer(cust)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-surface-800/70 transition-colors flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white truncate">{cust.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {cust.customerCode}{cust.phone ? ` · ${cust.phone}` : ''}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] text-slate-500 block">Balance</span>
+                          <span
+                            className={`text-[11px] font-mono font-bold ${
+                              (cust.currentBalance ?? 0) > 0
+                                ? 'text-rose-400'
+                                : (cust.currentBalance ?? 0) < 0
+                                ? 'text-emerald-400'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            ₹{(cust.currentBalance ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!selectedCustomer && (
+              <p className="text-[10px] text-slate-600 px-1">
+                Leave blank for walk-in / retail cash sale
+              </p>
             )}
           </div>
         </div>
@@ -858,6 +1195,150 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
           </div>
         </div>
 
+        {/* Coupon Code Section */}
+        <div className="p-3.5 rounded-2xl bg-surface-900 border border-surface-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Ticket className="h-3.5 w-3.5 text-amber-400" />
+              <span>Promotional Coupon</span>
+            </span>
+            {appliedCoupon && (
+              <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Active
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={couponCode}
+              disabled={!!appliedCoupon || isValidatingCoupon}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              placeholder="Enter Coupon Code..."
+              className="flex-1 px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded-xl bg-surface-950 border border-surface-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 disabled:opacity-60"
+            />
+            {appliedCoupon ? (
+              <button
+                type="button"
+                onClick={handleRemoveCoupon}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition-colors"
+              >
+                Remove
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!couponCode.trim() || isValidatingCoupon || cart.length === 0}
+                onClick={handleApplyCoupon}
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-surface-950 font-bold disabled:opacity-40 transition-colors flex items-center gap-1"
+              >
+                {isValidatingCoupon ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                Apply
+              </button>
+            )}
+          </div>
+
+          {couponMessage && (
+            <div className={`text-[11px] font-medium ${appliedCoupon ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {couponMessage}
+            </div>
+          )}
+        </div>
+
+        {/* Customer Loyalty Points Redemption Section */}
+        {loyaltySettings?.enabled && (
+          <div className="p-3.5 rounded-2xl bg-surface-900 border border-surface-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Gift className="h-3.5 w-3.5 text-brand-400" />
+                <span>Loyalty Points Redemption</span>
+              </span>
+              {appliedPointsRedeemed > 0 ? (
+                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> -₹{pointsDiscountAmount.toFixed(2)} Off
+                </span>
+              ) : customerWallet ? (
+                <span className="text-[10px] text-amber-400 font-mono font-semibold">
+                  {customerWallet.cachedAvailablePoints} Pts Available
+                </span>
+              ) : null}
+            </div>
+
+            {!selectedCustomer ? (
+              <p className="text-[11px] text-slate-500 italic">
+                Select a registered customer above to redeem loyalty points.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={pointsToRedeemInput}
+                      disabled={appliedPointsRedeemed > 0 || isValidatingPoints}
+                      onChange={(e) => setPointsToRedeemInput(e.target.value)}
+                      placeholder={`Enter pts (Min: ${loyaltySettings.minimumRedemptionPoints})`}
+                      className="w-full pl-3 pr-12 py-1.5 text-xs font-mono rounded-xl bg-surface-950 border border-surface-700 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-60"
+                    />
+                    {!appliedPointsRedeemed && customerWallet && customerWallet.cachedAvailablePoints > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const maxRedeemable = Math.min(
+                            customerWallet.cachedAvailablePoints,
+                            Math.floor((totals.subtotal * (loyaltySettings.maximumRedemptionPercentage / 100)) / (loyaltySettings.redemptionValue || 1))
+                          );
+                          setPointsToRedeemInput(String(Math.max(0, maxRedeemable)));
+                        }}
+                        className="absolute right-2 top-1.5 text-[10px] font-bold text-brand-400 hover:text-brand-300 uppercase"
+                      >
+                        Max
+                      </button>
+                    )}
+                  </div>
+
+                  {appliedPointsRedeemed > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleRemovePoints}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!pointsToRedeemInput || isValidatingPoints || cart.length === 0}
+                      onClick={handleApplyPoints}
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white disabled:opacity-40 transition-colors flex items-center gap-1"
+                    >
+                      {isValidatingPoints ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                      Redeem
+                    </button>
+                  )}
+                </div>
+
+                {loyaltyMessage && (
+                  <div className={`text-[11px] font-medium ${appliedPointsRedeemed > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {loyaltyMessage}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Anticipated Points Earning Notification */}
+            {selectedCustomer && anticipatedPoints > 0 && (
+              <div className="rounded-xl bg-brand-500/10 border border-brand-500/20 p-2 flex items-center gap-2 text-[11px] text-brand-300">
+                <Coins className="h-3.5 w-3.5 text-brand-400 shrink-0" />
+                <span>Customer will earn ~<strong>{anticipatedPoints} Points</strong> on this sale.</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Grand Total Summary Card */}
         <div className="p-5 rounded-2xl bg-surface-900 border border-surface-800 space-y-3">
           <div className="space-y-1.5 text-xs text-slate-400 font-mono">
@@ -869,6 +1350,12 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
               <div className="flex justify-between text-emerald-400">
                 <span>Discounts:</span>
                 <span>-{formatCurrency(totals.totalDiscount)}</span>
+              </div>
+            )}
+            {pointsDiscountAmount > 0 && (
+              <div className="flex justify-between text-amber-400 text-[11px]">
+                <span>└ Loyalty Points ({appliedPointsRedeemed} pts):</span>
+                <span>-{formatCurrency(pointsDiscountAmount)}</span>
               </div>
             )}
             <div className="flex justify-between">
@@ -963,6 +1450,18 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
           >
             <Clock className="h-4 w-4 text-amber-400" />
             <span>Hold Bill / Save Draft (F8)</span>
+          </button>
+
+          {/* Next-Bill Coupon Issuance Trigger */}
+          <button
+            type="button"
+            disabled={!selectedCustomer}
+            onClick={() => setIsIssueNextBillModalOpen(true)}
+            title={!selectedCustomer ? 'Assign a customer to issue a next-bill voucher' : 'Issue discount coupon for future visits'}
+            className="w-full py-2 px-3 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span>Issue Coupon for Next Bill</span>
           </button>
         </div>
       </div>
@@ -1190,7 +1689,10 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
       <CustomerModal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
-        onSuccess={() => loadCustomers()}
+        onSuccess={(newCustomer) => {
+          if (newCustomer) selectCustomer(newCustomer);
+          setIsCustomerModalOpen(false);
+        }}
       />
 
       {/* Print Receipt Modal */}
@@ -1198,6 +1700,14 @@ export const POSBillingTab: React.FC<POSBillingTabProps> = ({
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         invoice={completedInvoice}
+      />
+
+      {/* Issue Next Bill Coupon Modal */}
+      <IssueNextBillCouponModal
+        isOpen={isIssueNextBillModalOpen}
+        onClose={() => setIsIssueNextBillModalOpen(false)}
+        customer={selectedCustomer}
+        issuingInvoiceId={completedInvoice?.id}
       />
     </div>
   );

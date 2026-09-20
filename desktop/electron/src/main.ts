@@ -1,5 +1,6 @@
 import { DatabaseService } from '@rs-inventory/database';
-import { app, BrowserWindow, dialog } from 'electron';
+import { PermissionService } from '@rs-inventory/business';
+import { app, BrowserWindow, dialog, Menu } from 'electron';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as dotenv from 'dotenv';
@@ -19,6 +20,9 @@ let mainWindow: BrowserWindow | null = null;
 const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
 
 async function bootstrap(): Promise<void> {
+  // Hide native Electron menu bar application-wide (File, Edit, View, Window, Help)
+  Menu.setApplicationMenu(null);
+
   // Step 1 & 2: Load Configuration
   const configService = ConfigService.getInstance();
   const env = configService.getEnvironment();
@@ -45,6 +49,11 @@ async function bootstrap(): Promise<void> {
     // Run health check / migration check
     const health = await dbService.healthCheck();
     loggerService.info('Database health check result', health);
+
+    // Synchronize all system permissions and role mappings
+    const prisma = dbService.getClient();
+    await PermissionService.syncSystemPermissions(prisma);
+    loggerService.info('System permissions and role mappings synchronized successfully.');
   } catch (dbError) {
     loggerService.error('Fatal Database Initialization Failure', dbError);
     dialog.showErrorBox(
@@ -69,6 +78,9 @@ function createMainWindow(configService: ConfigService, loggerService: LoggerSer
   // Preload path: in dist-electron/
   const preloadPath = path.join(__dirname, 'preload.cjs');
 
+  // Ensure application menu is null
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -76,6 +88,7 @@ function createMainWindow(configService: ConfigService, loggerService: LoggerSer
     minHeight: 700,
     title: `${configService.getAppName()} – Solo`,
     backgroundColor: '#090d16',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -86,6 +99,9 @@ function createMainWindow(configService: ConfigService, loggerService: LoggerSer
     frame: true,
     show: false,
   });
+
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.removeMenu();
 
   const localRendererPath = path.resolve(
     __dirname,

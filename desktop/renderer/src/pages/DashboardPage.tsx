@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Database,
   HardDrive,
@@ -14,70 +14,123 @@ import {
   PlusCircle,
   FileText,
   Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { useApplicationStore } from '../store/applicationStore';
 import { useAuthStore } from '../store/authStore';
 import { useCompanyStore } from '../store/companyStore';
+import type { SalesDashboardKPIs, PurchaseDashboardKPIs, InventoryKPIs } from '@rs-inventory/types';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (n: number) =>
+  '\u20b9' +
+  n.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`animate-pulse rounded bg-surface-800 ${className}`} />
+);
 
 export const DashboardPage: React.FC = () => {
   const { systemInfo, databaseHealth } = useApplicationStore();
   const { currentUser } = useAuthStore();
   const { company } = useCompanyStore();
 
+  const [salesKPIs, setSalesKPIs] = useState<SalesDashboardKPIs | null>(null);
+  const [purchaseKPIs, setPurchaseKPIs] = useState<PurchaseDashboardKPIs | null>(null);
+  const [inventoryKPIs, setInventoryKPIs] = useState<InventoryKPIs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const fetchKPIs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [salesRes, purchaseRes, inventoryRes] = await Promise.all([
+        window.rsInventory.getSalesKPIs(),
+        window.rsInventory.getPurchaseKPIs(),
+        window.rsInventory.getInventoryKPIs(),
+      ]);
+      if (salesRes.success && salesRes.data) setSalesKPIs(salesRes.data);
+      if (purchaseRes.success && purchaseRes.data) setPurchaseKPIs(purchaseRes.data);
+      if (inventoryRes.success && inventoryRes.data) setInventoryKPIs(inventoryRes.data);
+      setLastRefreshed(new Date());
+    } catch {
+      // silently fail — values stay null and UI shows fallback zeros
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchKPIs();
+  }, [fetchKPIs]);
+
+  const lowStockTotal = inventoryKPIs
+    ? inventoryKPIs.lowStockItemsCount + inventoryKPIs.outOfStockItemsCount
+    : 0;
+
   const metrics = [
     {
       title: "Today's Sales",
-      value: '₹0.00',
-      subtitle: '0 bills generated today',
+      value: salesKPIs ? fmt(salesKPIs.salesTodayAmount) : '\u20b90.00',
+      subtitle: salesKPIs
+        ? `${salesKPIs.salesTodayCount} bill${salesKPIs.salesTodayCount !== 1 ? 's' : ''} generated today`
+        : '0 bills generated today',
       icon: ShoppingCart,
       color: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/20',
     },
     {
       title: "Today's Purchases",
-      value: '₹0.00',
-      subtitle: '0 inward receipts',
+      value: purchaseKPIs ? fmt(purchaseKPIs.purchasesTodayAmount) : '\u20b90.00',
+      subtitle: purchaseKPIs
+        ? `${purchaseKPIs.purchasesTodayCount} inward receipt${purchaseKPIs.purchasesTodayCount !== 1 ? 's' : ''}`
+        : '0 inward receipts',
       icon: TrendingUp,
       color: 'text-brand-400',
       bg: 'bg-brand-500/10',
-      border: 'border-brand-500/20',
     },
     {
       title: 'Total Receivables (Khata)',
-      value: '₹0.00',
-      subtitle: 'Outstanding from customers',
+      value: salesKPIs ? fmt(salesKPIs.outstandingReceivables) : '\u20b90.00',
+      subtitle: salesKPIs
+        ? `${salesKPIs.unpaidInvoicesCount + (salesKPIs.partiallyPaidInvoicesCount ?? 0)} outstanding invoice${(salesKPIs.unpaidInvoicesCount + (salesKPIs.partiallyPaidInvoicesCount ?? 0)) !== 1 ? 's' : ''}`
+        : 'Outstanding from customers',
       icon: ArrowDownLeft,
       color: 'text-sky-400',
       bg: 'bg-sky-500/10',
-      border: 'border-sky-500/20',
     },
     {
       title: 'Total Payables',
-      value: '₹0.00',
-      subtitle: 'Owed to vendors & suppliers',
+      value: purchaseKPIs ? fmt(purchaseKPIs.outstandingSupplierPayables) : '\u20b90.00',
+      subtitle: purchaseKPIs
+        ? `${purchaseKPIs.unpaidPurchasesCount + (purchaseKPIs.partiallyPaidPurchasesCount ?? 0)} unpaid to vendors`
+        : 'Owed to vendors & suppliers',
       icon: ArrowUpRight,
       color: 'text-amber-400',
       bg: 'bg-amber-500/10',
-      border: 'border-amber-500/20',
     },
     {
       title: 'Active Products',
-      value: '0',
-      subtitle: 'SKUs in catalog',
+      value: inventoryKPIs ? String(inventoryKPIs.totalProducts) : '0',
+      subtitle: inventoryKPIs
+        ? `${inventoryKPIs.totalStockQuantity.toLocaleString('en-IN')} units in stock`
+        : 'SKUs in catalog',
       icon: Package,
       color: 'text-indigo-400',
       bg: 'bg-indigo-500/10',
-      border: 'border-indigo-500/20',
     },
     {
       title: 'Low Stock Alerts',
-      value: '0',
-      subtitle: 'Items below threshold',
+      value: String(lowStockTotal),
+      subtitle: inventoryKPIs
+        ? `${inventoryKPIs.lowStockItemsCount} low \u00b7 ${inventoryKPIs.outOfStockItemsCount} out of stock`
+        : 'Items below threshold',
       icon: AlertTriangle,
-      color: 'text-rose-400',
-      bg: 'bg-rose-500/10',
-      border: 'border-rose-500/20',
+      color: lowStockTotal > 0 ? 'text-rose-400' : 'text-slate-400',
+      bg: lowStockTotal > 0 ? 'bg-rose-500/10' : 'bg-surface-800',
     },
   ];
 
@@ -168,7 +221,23 @@ export const DashboardPage: React.FC = () => {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
             Daily Retail Overview
           </h2>
-          <span className="text-xs text-slate-500">Real-time local metrics</span>
+          <div className="flex items-center gap-3">
+            {lastRefreshed && !loading && (
+              <span className="text-[11px] text-slate-500">
+                Updated {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={fetchKPIs}
+              disabled={loading}
+              title="Refresh metrics"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-brand-300 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Loading\u2026' : 'Refresh'}
+            </button>
+            <span className="text-xs text-slate-500">Real-time local metrics</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -188,8 +257,17 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-2xl font-bold text-white font-mono">{metric.value}</div>
-                  <div className="mt-1 text-xs text-slate-500">{metric.subtitle}</div>
+                  {loading ? (
+                    <>
+                      <Skeleton className="h-8 w-32 mb-2" />
+                      <Skeleton className="h-3 w-40" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold text-white font-mono">{metric.value}</div>
+                      <div className="mt-1 text-xs text-slate-500">{metric.subtitle}</div>
+                    </>
+                  )}
                 </div>
               </div>
             );

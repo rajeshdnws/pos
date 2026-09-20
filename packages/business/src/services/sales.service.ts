@@ -21,6 +21,12 @@ import { AuditService } from './audit.service.js';
 import { SalesCalculationService } from './sales-calculation.service.js';
 import { SequenceService } from './sequence.service.js';
 import { StockService } from './stock.service.js';
+import {
+  LoyaltyCalculationService,
+  LoyaltyRedemptionService,
+  LoyaltySettingsService,
+  LoyaltyWalletService,
+} from './loyalty/index.js';
 
 export class SalesService {
   private repo: SalesInvoiceRepository;
@@ -202,6 +208,11 @@ export class SalesService {
           amountReturned: 0,
           paymentStatus: 'UNPAID',
           notes: dto.notes?.trim() || null,
+          couponId: dto.couponId || null,
+          couponCodeSnapshot: dto.couponCode || null,
+          couponDiscount: dto.couponDiscount || 0,
+          pointsRedeemed: dto.pointsRedeemed || 0,
+          pointsDiscount: dto.pointsDiscount || 0,
           createdBy: userId || null,
         },
         itemsData,
@@ -256,6 +267,11 @@ export class SalesService {
         ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }),
         ...(dto.locationId !== undefined && { locationId: dto.locationId }),
         ...(dto.notes !== undefined && { notes: dto.notes?.trim() || null }),
+        ...(dto.couponId !== undefined && { couponId: dto.couponId || null }),
+        ...(dto.couponCode !== undefined && { couponCodeSnapshot: dto.couponCode || null }),
+        ...(dto.couponDiscount !== undefined && { couponDiscount: dto.couponDiscount || 0 }),
+        ...(dto.pointsRedeemed !== undefined && { pointsRedeemed: dto.pointsRedeemed || 0 }),
+        ...(dto.pointsDiscount !== undefined && { pointsDiscount: dto.pointsDiscount || 0 }),
         ...(calculation && {
           ...customerSnap,
           subtotal: calculation.subtotal,
@@ -398,12 +414,110 @@ export class SalesService {
         }
       }
 
+      // 3c. Deduct Redeemed Points (Step 12)
+      if (invoice.pointsRedeemed && invoice.pointsRedeemed > 0 && invoice.customerId) {
+        const redemptionService = new LoyaltyRedemptionService(this.prisma);
+        await redemptionService.deductPoints(
+          companyId,
+          invoice.customerId,
+          invoice.pointsRedeemed,
+          invoice.id,
+          invoice.invoiceNumber,
+          userId,
+          tx,
+        );
+      }
+
+      // 3d. Calculate and Award Loyalty Points (Step 12)
+      let earnedPoints = 0;
+      if (invoice.customerId) {
+        const loyaltySettingsService = new LoyaltySettingsService(this.prisma);
+        const loyaltySettings = await loyaltySettingsService.getSettings(companyId, tx);
+
+        if (loyaltySettings.enabled) {
+          const eligibleAmount = LoyaltyCalculationService.calculateEligibleAmount(loyaltySettings, {
+            subtotal: invoice.subtotal,
+            lineDiscountTotal: invoice.lineDiscountTotal,
+            invoiceDiscount: invoice.invoiceDiscount,
+            couponDiscount: invoice.couponDiscount,
+            pointsDiscount: invoice.pointsDiscount,
+            taxAmount:
+              (invoice.cgstAmount || 0) +
+              (invoice.sgstAmount || 0) +
+              (invoice.igstAmount || 0) +
+              (invoice.cessAmount || 0) +
+              (invoice.otherTaxAmount || 0),
+            additionalCharges: invoice.additionalCharges,
+          });
+
+          earnedPoints = LoyaltyCalculationService.calculateEarnedPoints(loyaltySettings, eligibleAmount);
+
+          if (earnedPoints > 0) {
+            const walletService = new LoyaltyWalletService(this.prisma);
+            const wallet = await walletService.getOrCreateWallet(companyId, invoice.customerId, tx);
+            const newBalance = wallet.cachedAvailablePoints + earnedPoints;
+
+            const earnIdempotencyKey = `SALE_EARN_${invoice.id}`;
+            const existingEarn = await tx.loyaltyTransaction.findUnique({
+              where: { companyId_idempotencyKey: { companyId, idempotencyKey: earnIdempotencyKey } },
+            });
+
+            if (!existingEarn) {
+              const earnTxn = await tx.loyaltyTransaction.create({
+                data: {
+                  companyId,
+                  customerId: invoice.customerId,
+                  walletId: wallet.id,
+                  transactionType: 'EARN',
+                  points: earnedPoints,
+                  balanceAfter: newBalance,
+                  referenceType: 'SALE',
+                  referenceId: invoice.id,
+                  salesInvoiceId: invoice.id,
+                  invoiceNumberSnapshot: invoice.invoiceNumber,
+                  description: `Earned ${earnedPoints} loyalty points on ${invoice.invoiceNumber}`,
+                  idempotencyKey: earnIdempotencyKey,
+                  createdBy: userId || null,
+                },
+              });
+
+              if (loyaltySettings.pointExpiryDays > 0) {
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + loyaltySettings.pointExpiryDays);
+
+                await tx.loyaltyPointLot.create({
+                  data: {
+                    companyId,
+                    customerId: invoice.customerId,
+                    walletId: wallet.id,
+                    sourceTransactionId: earnTxn.id,
+                    originalPoints: earnedPoints,
+                    remainingPoints: earnedPoints,
+                    expiresAt,
+                    status: 'ACTIVE',
+                  },
+                });
+              }
+
+              await tx.customerWallet.update({
+                where: { id: wallet.id },
+                data: {
+                  cachedAvailablePoints: newBalance,
+                  cachedLifetimeEarned: { increment: earnedPoints },
+                },
+              });
+            }
+          }
+        }
+      }
+
       // 4. Mark invoice POSTED
       const posted = await tx.salesInvoice.update({
         where: { id },
         data: {
           status: 'POSTED',
           locationId,
+          pointsEarned: earnedPoints,
           amountPaid: totalPayments,
           paymentStatus: totalPayments <= 0
             ? 'UNPAID'
@@ -550,6 +664,30 @@ export class SalesService {
             data: { currentBalance: { decrement: payAmt } },
           });
         }
+      }
+
+      // 7b. Atomic Coupon Redemption
+      if (invoice.couponId) {
+        await tx.coupon.update({
+          where: { id: invoice.couponId },
+          data: {
+            currentRedemptionsCount: { increment: 1 },
+          },
+        });
+
+        await tx.couponRedemption.create({
+          data: {
+            companyId,
+            couponId: invoice.couponId,
+            customerId: posted.customerId || null,
+            salesInvoiceId: id,
+            discountAmount: invoice.couponDiscount || 0,
+            billAmountBeforeDiscount: invoice.subtotal,
+            billAmountAfterDiscount: invoice.grandTotal,
+            redeemedBy: userId || null,
+            redeemedAt: new Date(),
+          },
+        });
       }
 
       // 8. Audit log

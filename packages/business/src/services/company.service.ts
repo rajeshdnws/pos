@@ -291,7 +291,7 @@ export class CompanyService {
         permissions,
         company: companyRecord as unknown as Company,
       };
-    });
+    }, { maxWait: 15000, timeout: 30000 });
   }
 
   public async updateCompany(companyId: string, updates: Partial<Company>): Promise<Company> {

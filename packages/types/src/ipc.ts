@@ -115,6 +115,49 @@ export const IPC_CHANNELS = {
   LICENSE_DEACTIVATE: 'license:deactivate',
   LICENSE_CHOOSE_FILE: 'license:choose-file',
 
+  // Step 11: Communication Configuration
+  COMMUNICATION_GET_CONFIG: 'communication:get-config',
+  COMMUNICATION_SAVE_CONFIG: 'communication:save-config',
+  COMMUNICATION_TEST_CONFIG: 'communication:test-config',
+  COMMUNICATION_LIST_TEMPLATES: 'communication:list-templates',
+  COMMUNICATION_GET_TEMPLATE: 'communication:get-template',
+  COMMUNICATION_CREATE_TEMPLATE: 'communication:create-template',
+  COMMUNICATION_UPDATE_TEMPLATE: 'communication:update-template',
+  COMMUNICATION_DELETE_TEMPLATE: 'communication:delete-template',
+  COMMUNICATION_PREVIEW_TEMPLATE: 'communication:preview-template',
+  COMMUNICATION_LIST_LOGS: 'communication:list-logs',
+  COMMUNICATION_RETRY_LOG: 'communication:retry-log',
+
+  // Step 11: Promotional Campaigns
+  CAMPAIGNS_LIST: 'campaigns:list',
+  CAMPAIGNS_GET: 'campaigns:get',
+  CAMPAIGNS_CREATE: 'campaigns:create',
+  CAMPAIGNS_UPDATE: 'campaigns:update',
+  CAMPAIGNS_UPDATE_STATUS: 'campaigns:update-status',
+  CAMPAIGNS_DISPATCH: 'campaigns:dispatch',
+
+  // Step 11: Coupons & Promotions
+  COUPONS_LIST: 'coupons:list',
+  COUPONS_GET: 'coupons:get',
+  COUPONS_CREATE: 'coupons:create',
+  COUPONS_UPDATE: 'coupons:update',
+  COUPONS_CANCEL: 'coupons:cancel',
+  COUPONS_VALIDATE: 'coupons:validate',
+  COUPONS_GENERATE_CODE: 'coupons:generate-code',
+  COUPONS_ISSUE: 'coupons:issue',
+  COUPONS_ISSUE_NEXT_BILL: 'coupons:issue-next-bill',
+  COUPONS_LIST_REDEMPTIONS: 'coupons:list-redemptions',
+  COUPONS_LIST_ISSUANCES: 'coupons:list-issuances',
+  PROMOTIONS_GET_KPIS: 'promotions:get-kpis',
+  PROMOTIONS_REPORT_ISSUANCE: 'promotions:report-issuance',
+  PROMOTIONS_REPORT_REDEMPTION: 'promotions:report-redemption',
+  PROMOTIONS_REPORT_CAMPAIGN: 'promotions:report-campaign',
+  PROMOTIONS_REPORT_NEXT_BILL: 'promotions:report-next-bill',
+  PROMOTIONS_ISSUANCE_REPORT: 'promotions:report-issuance',
+  PROMOTIONS_REDEMPTION_REPORT: 'promotions:report-redemption',
+  PROMOTIONS_CAMPAIGN_REPORT: 'promotions:report-campaign',
+  PROMOTIONS_NEXT_BILL_REPORT: 'promotions:report-next-bill',
+
   // Categories
   CATEGORIES_LIST: 'categories:list',
   CATEGORIES_GET: 'categories:get',
@@ -322,6 +365,19 @@ export const IPC_CHANNELS = {
   REPORTS_GET_CASHBOOK: 'reports:get-cashbook',
   REPORTS_GET_REGISTER_CLOSINGS: 'reports:get-register-closings',
   REPORTS_GET_TAX_SUMMARY: 'reports:get-tax-summary',
+
+  // Step 12: Customer Wallet & Loyalty Points
+  LOYALTY_GET_SETTINGS: 'loyalty:get-settings',
+  LOYALTY_UPDATE_SETTINGS: 'loyalty:update-settings',
+  LOYALTY_GET_WALLET: 'loyalty:get-wallet',
+  LOYALTY_GET_TRANSACTIONS: 'loyalty:get-transactions',
+  LOYALTY_CALCULATE_EARN: 'loyalty:calculate-earn',
+  LOYALTY_VALIDATE_REDEMPTION: 'loyalty:validate-redemption',
+  LOYALTY_MANUAL_ADJUSTMENT: 'loyalty:manual-adjustment',
+  LOYALTY_PROCESS_EXPIRY: 'loyalty:process-expiry',
+  LOYALTY_GET_KPIS: 'loyalty:get-kpis',
+  LOYALTY_GET_REPORT: 'loyalty:get-report',
+  LOYALTY_RECONCILE_WALLET: 'loyalty:reconcile-wallet',
 } as const;
 
 export type WindowAction = 'minimize' | 'maximize' | 'close' | 'restart';
@@ -602,6 +658,60 @@ export interface RsInventoryApi {
   activateLicenseContent: (licenseFileContent: string) => Promise<ApiResponse<import('./license.js').LicenseStatusDTO>>;
   deactivateLicense: () => Promise<ApiResponse<{ success: boolean; message: string }>>;
   chooseLicenseFile: () => Promise<ApiResponse<string | null>>;
+
+  // Step 11: Communication
+  getCommunicationConfig: (channel: import('./domain.js').CommunicationChannel) => Promise<ApiResponse<import('./domain.js').CommunicationProviderConfigDTO | null>>;
+  saveCommunicationConfig: (channel: import('./domain.js').CommunicationChannel, dto: any) => Promise<ApiResponse<import('./domain.js').CommunicationProviderConfigDTO>>;
+  testCommunicationConfig: (channel: import('./domain.js').CommunicationChannel, testRecipient?: string) => Promise<ApiResponse<import('./domain.js').TestCommunicationResultDTO>>;
+  listMessageTemplates: (channel?: import('./domain.js').CommunicationChannel) => Promise<ApiResponse<import('./domain.js').MessageTemplateDTO[]>>;
+  getMessageTemplate: (id: string) => Promise<ApiResponse<import('./domain.js').MessageTemplateDTO | null>>;
+  createMessageTemplate: (dto: import('./domain.js').MessageTemplateCreateDTO) => Promise<ApiResponse<import('./domain.js').MessageTemplateDTO>>;
+  updateMessageTemplate: (id: string, dto: import('./domain.js').MessageTemplateUpdateDTO) => Promise<ApiResponse<import('./domain.js').MessageTemplateDTO>>;
+  deleteMessageTemplate: (id: string) => Promise<ApiResponse<boolean>>;
+  previewMessageTemplate: (templateId: string, sampleData?: Record<string, any>) => Promise<ApiResponse<{ subject?: string; body: string }>>;
+  listCommunicationLogs: (filters?: import('./domain.js').CommunicationLogFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CommunicationLogDTO>>>;
+  retryCommunicationLog: (id: string) => Promise<ApiResponse<import('./domain.js').CommunicationLogDTO>>;
+
+  // Step 11: Campaigns
+  listCampaigns: (filters?: any) => Promise<ApiResponse<PaginatedResult<import('./domain.js').PromotionCampaignDTO>>>;
+  getCampaign: (id: string) => Promise<ApiResponse<import('./domain.js').PromotionCampaignDTO | null>>;
+  createCampaign: (dto: import('./domain.js').PromotionCampaignCreateDTO) => Promise<ApiResponse<import('./domain.js').PromotionCampaignDTO>>;
+  updateCampaign: (id: string, dto: import('./domain.js').PromotionCampaignUpdateDTO) => Promise<ApiResponse<import('./domain.js').PromotionCampaignDTO>>;
+  updateCampaignStatus: (id: string, status: import('./domain.js').CampaignStatus) => Promise<ApiResponse<import('./domain.js').PromotionCampaignDTO>>;
+  dispatchCampaign: (id: string) => Promise<ApiResponse<{ dispatched: number; failed: number }>>;
+
+  // Step 11: Coupons
+  listCoupons: (filters?: any) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CouponDTO>>>;
+  getCoupon: (id: string) => Promise<ApiResponse<import('./domain.js').CouponDTO | null>>;
+  createCoupon: (dto: import('./domain.js').CouponCreateDTO) => Promise<ApiResponse<import('./domain.js').CouponDTO>>;
+  updateCoupon: (id: string, dto: any) => Promise<ApiResponse<import('./domain.js').CouponDTO>>;
+  cancelCoupon: (id: string, reason?: string) => Promise<ApiResponse<import('./domain.js').CouponDTO>>;
+  generateCouponCode: (prefix?: string) => Promise<ApiResponse<string>>;
+  validateCoupon: (input: import('./domain.js').CouponValidationInputDTO) => Promise<ApiResponse<import('./domain.js').CouponValidationResultDTO>>;
+  issueCoupon: (dto: { couponId: string; customerId: string; deliveryChannel?: import('./domain.js').CouponDeliveryChannel }) => Promise<ApiResponse<import('./domain.js').CouponIssuanceDTO>>;
+  issueNextBillCoupon: (dto: import('./domain.js').NextBillCouponCreateDTO) => Promise<ApiResponse<import('./domain.js').CouponDTO>>;
+  listCouponRedemptions: (filters?: any) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CouponRedemptionDTO>>>;
+  listCouponIssuances: (filters?: any) => Promise<ApiResponse<PaginatedResult<import('./domain.js').CouponIssuanceDTO>>>;
+
+  // Step 11: Promotion Reports & KPIs
+  getPromotionsKPIs: () => Promise<ApiResponse<import('./domain.js').PromotionsKPIsDTO>>;
+  getCouponIssuanceReport: (filters?: any) => Promise<ApiResponse<any>>;
+  getCouponRedemptionReport: (filters?: any) => Promise<ApiResponse<any>>;
+  getCampaignPerformanceReport: (filters?: any) => Promise<ApiResponse<any>>;
+  getNextBillCouponReport: (filters?: any) => Promise<ApiResponse<any>>;
+
+  // Step 12: Customer Wallet & Loyalty Points
+  getLoyaltySettings: () => Promise<ApiResponse<import('./domain.js').LoyaltySettingsDTO>>;
+  updateLoyaltySettings: (dto: import('./domain.js').LoyaltySettingsUpdateDTO) => Promise<ApiResponse<import('./domain.js').LoyaltySettingsDTO>>;
+  getCustomerWallet: (customerId: string) => Promise<ApiResponse<import('./domain.js').CustomerWalletDTO | null>>;
+  listLoyaltyTransactions: (filters?: import('./domain.js').LoyaltyTransactionFilterDTO) => Promise<ApiResponse<PaginatedResult<import('./domain.js').LoyaltyTransactionDTO>>>;
+  calculateLoyaltyEarn: (input: { customerId?: string | null; subtotal: number; isDiscounted?: boolean }) => Promise<ApiResponse<{ pointsEarned: number; eligibleAmount: number }>>;
+  validateLoyaltyRedemption: (input: import('./domain.js').LoyaltyRedemptionValidationInputDTO) => Promise<ApiResponse<import('./domain.js').LoyaltyRedemptionValidationResultDTO>>;
+  performManualLoyaltyAdjustment: (dto: import('./domain.js').ManualPointsAdjustmentDTO) => Promise<ApiResponse<import('./domain.js').LoyaltyTransactionDTO>>;
+  processLoyaltyExpiry: (asOfDate?: string) => Promise<ApiResponse<{ lotsExpired: number; pointsExpired: number }>>;
+  getLoyaltyKPIs: () => Promise<ApiResponse<import('./domain.js').LoyaltyKPIsDTO>>;
+  getLoyaltyReport: (filters?: import('./domain.js').LoyaltyReportFilterDTO) => Promise<ApiResponse<any>>;
+  reconcileCustomerWallet: (customerId: string) => Promise<ApiResponse<{ reconciled: boolean; oldBalance: number; newBalance: number }>>;
 }
 
 declare global {

@@ -120,7 +120,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hasPermission: (permissionCode: string) => {
-    const { permissions } = get();
+    const { permissions, currentUser } = get();
+    // System Administrator or Admin role has unconditional full access to all features
+    const roleName = currentUser?.role?.name?.toUpperCase();
+    if (
+      roleName === 'ADMINISTRATOR' ||
+      roleName === 'ADMIN' ||
+      (currentUser?.role?.isSystemRole && roleName?.includes('ADMIN')) ||
+      permissions.includes('*')
+    ) {
+      return true;
+    }
     return permissions.includes(permissionCode);
   },
 

@@ -105,9 +105,13 @@ export function canonicalize(val: any): string {
 function getNodeCrypto(): any {
   try {
     if (typeof process !== 'undefined' && process.versions?.node) {
-      // Dynamic require to prevent browser bundlers (Vite/Rollup) from failing on Node built-ins
-      const req = typeof require !== 'undefined' ? require : eval('require');
-      return req('crypto');
+      // typeof-guard avoids static analysis issues in both esbuild and Vite.
+      // In the Electron main process (CJS bundle) require is always defined.
+      // In the Vite renderer bundle the process.versions.node check above
+      // will be false so this branch is never reached.
+      const _req: NodeRequire | undefined =
+        typeof require !== 'undefined' ? require : undefined;
+      return _req ? _req('crypto') : null;
     }
   } catch {
     // In browser or mock environment

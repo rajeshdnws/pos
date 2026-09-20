@@ -18,7 +18,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (customer?: Customer) => void;
   editingCustomer?: Customer | null;
 }
 
@@ -78,7 +78,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [phone, setPhone] = useState('');
   const [alternatePhone, setAlternatePhone] = useState('');
   const [email, setEmail] = useState('');
-  const [customerType, setCustomerType] = useState<'INDIVIDUAL' | 'RETAIL' | 'WHOLESALE' | 'CORPORATE'>('INDIVIDUAL');
+  const [customerType, setCustomerType] = useState<'INDIVIDUAL' | 'BUSINESS' | 'RETAIL' | 'WHOLESALE' | 'CORPORATE'>('INDIVIDUAL');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [city, setCity] = useState('');
@@ -211,7 +211,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         const res = await window.rsInventory.updateCustomer(editingCustomer.id, updateDto);
         if (res.success) {
           notify('success', 'Customer updated successfully');
-          onSuccess();
+          onSuccess(res.data ?? undefined);
           onClose();
         } else {
           notify('error', res.error?.message || 'Failed to update customer');
@@ -244,7 +244,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         const res = await window.rsInventory.createCustomer(createDto);
         if (res.success) {
           notify('success', 'Customer created successfully');
-          onSuccess();
+          onSuccess(res.data ?? undefined);
           onClose();
         } else {
           notify('error', res.error?.message || 'Failed to create customer');
@@ -348,6 +348,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   className="w-full px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500"
                 >
                   <option value="INDIVIDUAL">Individual / Walk-in</option>
+                  <option value="BUSINESS">Business / Corporate</option>
                   <option value="RETAIL">Retail Regular</option>
                   <option value="WHOLESALE">Wholesale Client</option>
                   <option value="CORPORATE">Corporate / B2B</option>

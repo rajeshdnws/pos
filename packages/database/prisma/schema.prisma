@@ -69,6 +69,21 @@ model Company {
   cashMovements         CashMovement[]
   dayEndClosings        DayEndClosing[]
 
+  // Step 11: Communication & Promotions
+  communicationConfigs  CommunicationProviderConfig[]
+  messageTemplates      MessageTemplate[]
+  communicationLogs     CommunicationLog[]
+  promotionalCampaigns  PromotionCampaign[]
+  coupons               Coupon[]
+  couponRedemptions     CouponRedemption[]
+  couponIssuances       CouponIssuance[]
+
+  // Step 12: Customer Wallet & Loyalty Points
+  loyaltySettings       LoyaltySettings?
+  customerWallets       CustomerWallet[]
+  loyaltyTransactions   LoyaltyTransaction[]
+  loyaltyPointLots      LoyaltyPointLot[]
+
   @@map("companies")
 }
 
@@ -551,12 +566,25 @@ model SalesInvoice {
   createdAt                DateTime           @default(now()) @map("created_at")
   updatedAt                DateTime           @updatedAt @map("updated_at")
 
+  // Step 11: Promotional Coupons
+  couponId                 String?            @map("coupon_id")
+  couponCodeSnapshot       String?            @map("coupon_code_snapshot")
+  couponDiscount           Float              @default(0.0) @map("coupon_discount")
+
+  // Step 12: Loyalty Points
+  pointsEarned             Float              @default(0.0) @map("points_earned")
+  pointsRedeemed           Float              @default(0.0) @map("points_redeemed")
+  pointsDiscount           Float              @default(0.0) @map("points_discount")
+
   company                  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer                 Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
   location                 InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   items                    SalesInvoiceItem[]
   salesPayments            SalesPayment[]
   salesReturns             SalesReturn[]
+  couponRedemptions        CouponRedemption[]
+  issuedCoupons            CouponIssuance[]
+  loyaltyTransactions      LoyaltyTransaction[]
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, customerId])
@@ -638,11 +666,16 @@ model SalesReturn {
   createdAt               DateTime            @default(now()) @map("created_at")
   updatedAt               DateTime            @updatedAt @map("updated_at")
 
+  // Step 12: Loyalty Points
+  pointsReversed          Float               @default(0.0) @map("points_reversed")
+  pointsRestored          Float               @default(0.0) @map("points_restored")
+
   company                 Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   originalSalesInvoice    SalesInvoice        @relation(fields: [originalSalesInvoiceId], references: [id], onDelete: Restrict)
   customer                Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
   location                InventoryLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
   items                   SalesReturnItem[]
+  loyaltyTransactions     LoyaltyTransaction[]
 
   @@unique([companyId, returnNumber])
   @@index([companyId, originalSalesInvoiceId])
@@ -777,11 +810,31 @@ model Customer {
   createdAt            DateTime          @default(now()) @map("created_at")
   updatedAt            DateTime          @updatedAt @map("updated_at")
 
+  // Communication & Consent Preferences (Step 11)
+  preferredChannel     String            @default("SMS") @map("preferred_channel") // EMAIL, SMS, WHATSAPP
+  emailConsent         Boolean           @default(false) @map("email_consent")
+  smsConsent           Boolean           @default(false) @map("sms_consent")
+  whatsappConsent      Boolean           @default(false) @map("whatsapp_consent")
+  consentStatus        String            @default("OPTED_IN") @map("consent_status") // OPTED_IN, OPTED_OUT, PENDING
+  consentDate          DateTime?         @map("consent_date")
+  consentSource        String?           @map("consent_source") // POS_SIGNUP, MANUAL_ENTRY, IMPORT, ONLINE
+  optedOutAt           DateTime?         @map("opted_out_at")
+  communicationNotes   String?           @map("communication_notes")
+
   company              Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salesInvoices        SalesInvoice[]
   salesPayments        SalesPayment[]
   ledger               CustomerLedger[]
   salesReturns         SalesReturn[]
+  coupons              Coupon[]
+  couponRedemptions    CouponRedemption[]
+  couponIssuances      CouponIssuance[]
+  communicationLogs    CommunicationLog[]
+
+  // Step 12: Customer Wallet & Loyalty Points
+  wallet               CustomerWallet?
+  loyaltyTransactions  LoyaltyTransaction[]
+  loyaltyPointLots     LoyaltyPointLot[]
 
   @@unique([companyId, customerCode])
   @@index([companyId, name])
@@ -1226,6 +1279,320 @@ model License {
   @@index([licenseId])
   @@index([activationStatus])
   @@map("licenses")
+}
+
+// 42. Communication Provider Configurations (Step 11)
+model CommunicationProviderConfig {
+  id                 String    @id @default(uuid())
+  companyId          String    @map("company_id")
+  channel            String    @map("channel") // EMAIL, SMS, WHATSAPP
+  providerName       String    @map("provider_name") // SMTP, TWILIO, WHATSAPP_CLOUD, MOCK_SMS, MOCK_WHATSAPP
+  isEnabled          Boolean   @default(false) @map("is_enabled")
+  configPayload      String    @default("{}") @map("config_payload") // JSON string of non-sensitive configuration
+  encryptedSecrets   String?   @map("encrypted_secrets") // AES-256-GCM encrypted credentials
+  lastTestStatus     String?   @map("last_test_status") // SUCCESS, FAILED, UNTESTED
+  lastTestMessage    String?   @map("last_test_message")
+  lastTestedAt       DateTime? @map("last_tested_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, channel])
+  @@index([companyId, channel])
+  @@map("communication_provider_configs")
+}
+
+// 43. Message Templates (Step 11)
+model MessageTemplate {
+  id           String             @id @default(uuid())
+  companyId    String             @map("company_id")
+  name         String
+  channel      String             // EMAIL, SMS, WHATSAPP
+  templateType String             @default("PROMOTIONAL") @map("template_type") // PROMOTIONAL, COUPON_ISSUED, COUPON_REMINDER, EXPIRY_REMINDER, WELCOME
+  subject      String?
+  body         String
+  isActive     Boolean            @default(true) @map("is_active")
+  placeholders String?            // JSON string array of supported placeholders
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaigns    PromotionCampaign[]
+  logs         CommunicationLog[]
+
+  @@unique([companyId, name, channel])
+  @@index([companyId, channel])
+  @@map("message_templates")
+}
+
+// 44. Communication Logs (Step 11)
+model CommunicationLog {
+  id                 String           @id @default(uuid())
+  companyId          String           @map("company_id")
+  channel            String           // EMAIL, SMS, WHATSAPP
+  recipientReference String           @map("recipient_reference")
+  messageType        String           @default("TRANSACTIONAL") @map("message_type") // TRANSACTIONAL, MARKETING, TEST
+  templateId         String?          @map("template_id")
+  campaignId         String?          @map("campaign_id")
+  couponId           String?          @map("coupon_id")
+  customerId         String?          @map("customer_id")
+  providerMessageId  String?          @map("provider_message_id")
+  status             String           @default("PENDING") @map("status") // PENDING, PROCESSING, ACCEPTED, DELIVERED, FAILED, CANCELLED
+  submittedAt        DateTime         @default(now()) @map("submitted_at")
+  deliveredAt        DateTime?        @map("delivered_at")
+  failureReason      String?          @map("failure_reason")
+  retryCount         Int              @default(0) @map("retry_count")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  company            Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  template           MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  campaign           PromotionCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  coupon             Coupon?          @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  customer           Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, channel, status])
+  @@index([companyId, submittedAt])
+  @@index([companyId, customerId])
+  @@map("communication_logs")
+}
+
+// 45. Promotion Campaigns (Step 11)
+model PromotionCampaign {
+  id                  String             @id @default(uuid())
+  companyId           String             @map("company_id")
+  name                String
+  description         String?
+  campaignType        String             @default("GENERAL") @map("campaign_type") // FESTIVAL, CLEARANCE, VIP_MEMBERS, NEW_LAUNCH, GENERAL
+  status              String             @default("DRAFT") @map("status") // DRAFT, SCHEDULED, ACTIVE, PAUSED, COMPLETED, CANCELLED
+  startAt             DateTime           @map("start_at")
+  endAt               DateTime           @map("end_at")
+  targetCustomerGroup String             @default("ALL") @map("target_customer_group") // ALL, INDIVIDUAL, BUSINESS, WITH_KHATA
+  channels            String             @default("[\"EMAIL\",\"SMS\"]") // JSON array string
+  templateId          String?            @map("template_id")
+  couponId            String?            @map("coupon_id")
+  totalRecipients     Int                @default(0) @map("total_recipients")
+  messagesSent        Int                @default(0) @map("messages_sent")
+  messagesFailed      Int                @default(0) @map("messages_failed")
+  createdBy           String?            @map("created_by")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  company             Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  template            MessageTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  coupon              Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  communicationLogs   CommunicationLog[]
+
+  @@unique([companyId, name])
+  @@index([companyId, status])
+  @@index([companyId, startAt, endAt])
+  @@map("promotion_campaigns")
+}
+
+// 46. Coupons (Step 11)
+model Coupon {
+  id                             String             @id @default(uuid())
+  companyId                      String             @map("company_id")
+  code                           String             @map("code")
+  name                           String
+  description                    String?
+  discountType                   String             @default("PERCENTAGE") @map("discount_type") // PERCENTAGE, FIXED_AMOUNT
+  discountValue                  Float              @default(0.0) @map("discount_value")
+  minimumPurchase                Float              @default(0.0) @map("minimum_purchase")
+  maximumDiscount                Float?             @map("maximum_discount")
+  validFrom                      DateTime           @map("valid_from")
+  validUntil                     DateTime           @map("valid_until")
+  applicabilityMode              String             @default("ANY_ELIGIBLE_PURCHASE") @map("applicability_mode") // NEXT_ELIGIBLE_PURCHASE, ANY_ELIGIBLE_PURCHASE
+  customerId                     String?            @map("customer_id")
+  campaignId                     String?            @map("campaign_id")
+  applicableProductIds           String?            @map("applicable_product_ids") // JSON array string of product IDs
+  applicableCategoryIds          String?            @map("applicable_category_ids") // JSON array string of category IDs
+  excludedProductIds             String?            @map("excluded_product_ids") // JSON array string
+  maximumRedemptions             Int                @default(1) @map("maximum_redemptions")
+  maximumRedemptionsPerCustomer  Int                @default(1) @map("maximum_redemptions_per_customer")
+  currentRedemptionsCount        Int                @default(0) @map("current_redemptions_count")
+  status                         String             @default("ACTIVE") @map("status") // ACTIVE, INACTIVE, EXPIRED, CANCELLED
+  createdBy                      String?            @map("created_by")
+  createdAt                      DateTime           @default(now()) @map("created_at")
+  updatedAt                      DateTime           @updatedAt @map("updated_at")
+
+  company                        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer                       Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  campaigns                      PromotionCampaign[]
+  redemptions                    CouponRedemption[]
+  issuances                      CouponIssuance[]
+  communicationLogs              CommunicationLog[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@index([companyId, customerId])
+  @@index([companyId, validFrom, validUntil])
+  @@map("coupons")
+}
+
+// 47. Coupon Redemptions (Step 11)
+model CouponRedemption {
+  id                         String       @id @default(uuid())
+  companyId                  String       @map("company_id")
+  couponId                   String       @map("coupon_id")
+  customerId                 String?      @map("customer_id")
+  salesInvoiceId             String       @map("sales_invoice_id")
+  discountAmount             Float        @map("discount_amount")
+  billAmountBeforeDiscount   Float        @map("bill_amount_before_discount")
+  billAmountAfterDiscount    Float        @map("bill_amount_after_discount")
+  redeemedBy                 String?      @map("redeemed_by")
+  redeemedAt                 DateTime     @default(now()) @map("redeemed_at")
+
+  company                    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  coupon                     Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customer                   Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  salesInvoice               SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, couponId])
+  @@index([companyId, salesInvoiceId])
+  @@index([companyId, customerId])
+  @@index([companyId, redeemedAt])
+  @@map("coupon_redemptions")
+}
+
+// 48. Coupon Issuances (Step 11)
+model CouponIssuance {
+  id                     String        @id @default(uuid())
+  companyId              String        @map("company_id")
+  couponId               String        @map("coupon_id")
+  customerId             String?       @map("customer_id")
+  issuingSalesInvoiceId  String?       @map("issuing_sales_invoice_id")
+  issuedBy               String?       @map("issued_by")
+  issuedAt               DateTime      @default(now()) @map("issued_at")
+  deliveryChannel        String        @default("MANUAL") @map("delivery_channel") // EMAIL, SMS, WHATSAPP, PRINTED, MANUAL
+  deliveryStatus         String        @default("NOT_REQUESTED") @map("delivery_status") // PENDING, SENT, FAILED, NOT_REQUESTED
+  deliveryFailureReason  String?       @map("delivery_failure_reason")
+
+  company                Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  coupon                 Coupon        @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customer               Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  issuingSalesInvoice    SalesInvoice? @relation(fields: [issuingSalesInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, couponId])
+  @@index([companyId, customerId])
+  @@index([companyId, issuingSalesInvoiceId])
+  @@map("coupon_issuances")
+}
+
+// 49. Loyalty Settings (Step 12)
+model LoyaltySettings {
+  id                               String   @id @default(uuid())
+  companyId                        String   @unique @map("company_id")
+  enabled                          Boolean  @default(false)
+  earningMethod                    String   @default("AMOUNT_SPENT") @map("earning_method") // AMOUNT_SPENT, FLAT_PER_ORDER
+  eligibleAmount                   Float    @default(100.0) @map("eligible_amount")
+  pointsPerEligibleAmount          Float    @default(1.0) @map("points_per_eligible_amount")
+  redemptionValue                  Float    @default(1.0) @map("redemption_value")
+  minimumRedemptionPoints          Float    @default(10.0) @map("minimum_redemption_points")
+  maximumRedemptionPercentage      Float    @default(50.0) @map("maximum_redemption_percentage")
+  minimumBillAmount                Float    @default(100.0) @map("minimum_bill_amount")
+  minimumRedemptionIncrement       Float    @default(1.0) @map("minimum_redemption_increment")
+  pointExpiryDays                  Int      @default(0) @map("point_expiry_days") // 0 = never
+  allowEarningOnDiscountedBills    Boolean  @default(true) @map("allow_earning_on_discounted_bills")
+  allowEarningOnBillsWithRedemption Boolean @default(true) @map("allow_earning_on_bills_with_redemption")
+  allowEarningOnTax                Boolean  @default(false) @map("allow_earning_on_tax")
+  allowEarningOnAdditionalCharges  Boolean  @default(false) @map("allow_earning_on_additional_charges")
+  negativeBalancePolicy            String   @default("ALLOW_NEGATIVE") @map("negative_balance_policy") // ALLOW_NEGATIVE, DEDUCT_FROM_REFUND, CLAMP_TO_ZERO
+  termsAndConditions               String?  @map("terms_and_conditions")
+  createdAt                        DateTime @default(now()) @map("created_at")
+  updatedAt                        DateTime @updatedAt @map("updated_at")
+
+  company                          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_settings")
+}
+
+// 50. Customer Wallet (Step 12)
+model CustomerWallet {
+  id                    String   @id @default(uuid())
+  companyId             String   @map("company_id")
+  customerId            String   @unique @map("customer_id")
+  cachedAvailablePoints Float    @default(0.0) @map("cached_available_points")
+  cachedLifetimeEarned  Float    @default(0.0) @map("cached_lifetime_earned")
+  cachedLifetimeRedeemed Float   @default(0.0) @map("cached_lifetime_redeemed")
+  cachedLifetimeExpired Float    @default(0.0) @map("cached_lifetime_expired")
+  cachedLifetimeReversed Float   @default(0.0) @map("cached_lifetime_reversed")
+  status                String   @default("ACTIVE") // ACTIVE, FROZEN, SUSPENDED
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  company               Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer              Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  transactions          LoyaltyTransaction[]
+  lots                  LoyaltyPointLot[]
+
+  @@index([companyId, customerId])
+  @@map("customer_wallets")
+}
+
+// 51. Loyalty Transactions (Step 12)
+model LoyaltyTransaction {
+  id                     String        @id @default(uuid())
+  companyId              String        @map("company_id")
+  customerId             String        @map("customer_id")
+  walletId               String        @map("wallet_id")
+  transactionType        String        @map("transaction_type") // EARN, REDEEM, EXPIRE, RETURN_REVERSAL, RETURN_RESTORE, MANUAL_CREDIT, MANUAL_DEBIT, ADMIN_REVERSAL
+  points                 Float         // Positive for credits, negative for debits
+  balanceAfter           Float         @map("balance_after")
+  referenceType          String?       @map("reference_type") // SALE, SALE_RETURN, MANUAL, EXPIRY_BATCH
+  referenceId            String?       @map("reference_id")
+  salesInvoiceId         String?       @map("sales_invoice_id")
+  salesReturnId          String?       @map("sales_return_id")
+  invoiceNumberSnapshot  String?       @map("invoice_number_snapshot")
+  description            String?
+  reason                 String?
+  idempotencyKey         String?       @map("idempotency_key")
+  reversalOfTransactionId String?      @map("reversal_of_transaction_id")
+  createdBy              String?       @map("created_by")
+  createdAt              DateTime      @default(now()) @map("created_at")
+
+  company                Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  wallet                 CustomerWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  salesInvoice           SalesInvoice? @relation(fields: [salesInvoiceId], references: [id], onDelete: SetNull)
+  salesReturn            SalesReturn?  @relation(fields: [salesReturnId], references: [id], onDelete: SetNull)
+  lots                   LoyaltyPointLot[]
+
+  @@unique([companyId, idempotencyKey])
+  @@index([companyId, customerId])
+  @@index([companyId, walletId])
+  @@index([companyId, transactionType])
+  @@index([companyId, createdAt])
+  @@index([companyId, salesInvoiceId])
+  @@map("loyalty_transactions")
+}
+
+// 52. Loyalty Point Lots (Step 12)
+model LoyaltyPointLot {
+  id                  String             @id @default(uuid())
+  companyId           String             @map("company_id")
+  customerId          String             @map("customer_id")
+  walletId            String             @map("wallet_id")
+  sourceTransactionId String             @map("source_transaction_id")
+  originalPoints      Float              @map("original_points")
+  remainingPoints     Float              @map("remaining_points")
+  earnedAt            DateTime           @default(now()) @map("earned_at")
+  expiresAt           DateTime?          @map("expires_at")
+  status              String             @default("ACTIVE") // ACTIVE, FULLY_REDEEMED, EXPIRED, REVERSED
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  company             Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer            Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  wallet              CustomerWallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  sourceTransaction   LoyaltyTransaction @relation(fields: [sourceTransactionId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, customerId])
+  @@index([companyId, walletId])
+  @@index([companyId, status])
+  @@index([companyId, expiresAt])
+  @@map("loyalty_point_lots")
 }
 
 

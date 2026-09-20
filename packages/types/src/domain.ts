@@ -194,6 +194,18 @@ export interface Customer extends BaseEntity {
   isActive: boolean;
   createdBy?: string | null;
   updatedBy?: string | null;
+
+  // Step 11: Communication & Consent Preferences
+  preferredChannel?: string;
+  emailConsent?: boolean;
+  smsConsent?: boolean;
+  whatsappConsent?: boolean;
+  consentStatus?: 'OPTED_IN' | 'OPTED_OUT' | 'PENDING' | string;
+  consentDate?: Date | string | null;
+  consentSource?: string | null;
+  optedOutAt?: Date | string | null;
+  communicationNotes?: string | null;
+
   _count?: {
     salesInvoices?: number;
     salesPayments?: number;
@@ -1325,6 +1337,13 @@ export interface CustomerCreateDTO {
   creditPeriodDays?: number;
   notes?: string | null;
   isActive?: boolean;
+  preferredChannel?: string;
+  emailConsent?: boolean;
+  smsConsent?: boolean;
+  whatsappConsent?: boolean;
+  consentStatus?: 'OPTED_IN' | 'OPTED_OUT' | 'PENDING' | string;
+  consentSource?: string | null;
+  communicationNotes?: string | null;
 }
 
 export interface CustomerUpdateDTO {
@@ -1434,6 +1453,16 @@ export interface SalesInvoice extends BaseEntity {
   postedBy?: string | null;
   postedAt?: Date | string | null;
 
+  // Step 11: Promotional Coupons
+  couponId?: string | null;
+  couponCodeSnapshot?: string | null;
+  couponDiscount?: number;
+
+  // Step 12: Customer Wallet & Loyalty Points
+  pointsEarned?: number;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
+
   customer?: Customer | null;
   location?: InventoryLocation | null;
   items?: SalesInvoiceItem[];
@@ -1508,6 +1537,10 @@ export interface SalesReturn extends BaseEntity {
   approvedBy?: string | null;
   postedBy?: string | null;
   postedAt?: Date | string | null;
+
+  // Step 12: Customer Wallet & Loyalty Points
+  pointsReversed?: number;
+  pointsRestored?: number;
 
   customer?: Customer | null;
   location?: InventoryLocation | null;
@@ -1628,6 +1661,11 @@ export interface SalesInvoiceCreateDTO {
   additionalCharges?: number;
   roundOff?: number;
   notes?: string | null;
+  couponId?: string | null;
+  couponCode?: string | null;
+  couponDiscount?: number;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   items: SalesInvoiceItemDraftDTO[];
 }
 
@@ -1641,6 +1679,11 @@ export interface SalesInvoiceUpdateDTO {
   additionalCharges?: number;
   roundOff?: number;
   notes?: string | null;
+  couponId?: string | null;
+  couponCode?: string | null;
+  couponDiscount?: number;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   items?: SalesInvoiceItemDraftDTO[];
 }
 
@@ -2912,5 +2955,462 @@ export interface SystemInfoDTO {
   nodeVersion: string;
   electronVersion: string;
 }
+
+// ----------------- Step 11: Communication & Promotions Types -----------------
+
+export type CommunicationChannel = 'EMAIL' | 'SMS' | 'WHATSAPP';
+export type CommunicationSecurityMode = 'STARTTLS' | 'TLS' | 'PLAIN';
+export type CommunicationTestStatus = 'SUCCESS' | 'FAILED' | 'UNTESTED';
+export type MessageTemplateType = 'PROMOTIONAL' | 'COUPON_ISSUED' | 'COUPON_REMINDER' | 'EXPIRY_REMINDER' | 'WELCOME';
+export type CommunicationLogStatus = 'PENDING' | 'PROCESSING' | 'ACCEPTED' | 'DELIVERED' | 'FAILED' | 'CANCELLED';
+export type CampaignStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+export type CampaignType = 'FESTIVAL' | 'CLEARANCE' | 'VIP_MEMBERS' | 'NEW_LAUNCH' | 'GENERAL';
+export type CouponDiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+export type CouponApplicabilityMode = 'ANY_ELIGIBLE_PURCHASE' | 'NEXT_ELIGIBLE_PURCHASE';
+export type CouponStatus = 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'CANCELLED';
+export type CouponDeliveryChannel = 'EMAIL' | 'SMS' | 'WHATSAPP' | 'PRINTED' | 'MANUAL';
+export type CouponDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED' | 'NOT_REQUESTED';
+
+export interface CommunicationProviderConfigDTO {
+  id: string;
+  companyId: string;
+  channel: CommunicationChannel;
+  providerName: string;
+  isEnabled: boolean;
+  configPayload: Record<string, any>;
+  hasSecrets: boolean;
+  lastTestStatus?: CommunicationTestStatus | null;
+  lastTestMessage?: string | null;
+  lastTestedAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface SaveSMTPConfigDTO {
+  providerName: string;
+  host: string;
+  port: number;
+  securityMode: CommunicationSecurityMode;
+  username: string;
+  password?: string;
+  senderDisplayName: string;
+  senderEmail: string;
+  replyToEmail?: string;
+  timeoutSeconds?: number;
+  isEnabled: boolean;
+}
+
+export interface SaveSMSConfigDTO {
+  providerName: string;
+  apiEndpoint?: string;
+  accountSid?: string;
+  authToken?: string;
+  senderId?: string;
+  region?: string;
+  isEnabled: boolean;
+}
+
+export interface SaveWhatsAppConfigDTO {
+  providerName: string;
+  businessAccountId?: string;
+  phoneNumberId?: string;
+  senderPhoneNumber?: string;
+  accessToken?: string;
+  apiEndpoint?: string;
+  isEnabled: boolean;
+}
+
+export interface TestCommunicationResultDTO {
+  success: boolean;
+  message: string;
+  details?: Record<string, any>;
+}
+
+export interface MessageTemplateDTO extends BaseEntity {
+  companyId: string;
+  name: string;
+  channel: CommunicationChannel;
+  templateType: MessageTemplateType;
+  subject?: string | null;
+  body: string;
+  isActive: boolean;
+  placeholders?: string[] | null;
+}
+
+export interface MessageTemplateCreateDTO {
+  name: string;
+  channel: CommunicationChannel;
+  templateType: MessageTemplateType;
+  subject?: string | null;
+  body: string;
+  isActive?: boolean;
+}
+
+export interface MessageTemplateUpdateDTO {
+  name?: string;
+  templateType?: MessageTemplateType;
+  subject?: string | null;
+  body?: string;
+  isActive?: boolean;
+}
+
+export interface CommunicationLogDTO extends BaseEntity {
+  companyId: string;
+  channel: CommunicationChannel;
+  recipientReference: string;
+  messageType: 'TRANSACTIONAL' | 'MARKETING' | 'TEST';
+  templateId?: string | null;
+  campaignId?: string | null;
+  couponId?: string | null;
+  customerId?: string | null;
+  providerMessageId?: string | null;
+  status: CommunicationLogStatus;
+  submittedAt: Date | string;
+  deliveredAt?: Date | string | null;
+  failureReason?: string | null;
+  retryCount: number;
+  template?: { name: string } | null;
+  campaign?: { name: string } | null;
+  customer?: { name: string; phone?: string | null; email?: string | null } | null;
+}
+
+export interface CommunicationLogFilterDTO {
+  channel?: CommunicationChannel;
+  status?: CommunicationLogStatus;
+  messageType?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PromotionCampaignDTO extends BaseEntity {
+  companyId: string;
+  name: string;
+  description?: string | null;
+  campaignType: CampaignType;
+  status: CampaignStatus;
+  startAt: Date | string;
+  endAt: Date | string;
+  targetCustomerGroup: string;
+  channels: CommunicationChannel[];
+  templateId?: string | null;
+  couponId?: string | null;
+  totalRecipients: number;
+  messagesSent: number;
+  messagesFailed: number;
+  createdBy?: string | null;
+  template?: MessageTemplateDTO | null;
+  coupon?: CouponDTO | null;
+}
+
+export interface PromotionCampaignCreateDTO {
+  name: string;
+  description?: string;
+  campaignType?: CampaignType;
+  startAt: string;
+  endAt: string;
+  targetCustomerGroup?: string;
+  channels: CommunicationChannel[];
+  templateId?: string;
+  couponId?: string;
+}
+
+export interface PromotionCampaignUpdateDTO {
+  name?: string;
+  description?: string;
+  campaignType?: CampaignType;
+  startAt?: string;
+  endAt?: string;
+  targetCustomerGroup?: string;
+  channels?: CommunicationChannel[];
+  templateId?: string | null;
+  couponId?: string | null;
+  status?: CampaignStatus;
+}
+
+export interface CouponDTO extends BaseEntity {
+  companyId: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  minimumPurchase: number;
+  maximumDiscount?: number | null;
+  validFrom: Date | string;
+  validUntil: Date | string;
+  applicabilityMode: CouponApplicabilityMode;
+  customerId?: string | null;
+  campaignId?: string | null;
+  applicableProductIds?: string[] | null;
+  applicableCategoryIds?: string[] | null;
+  excludedProductIds?: string[] | null;
+  maximumRedemptions: number;
+  maximumRedemptionsPerCustomer: number;
+  currentRedemptionsCount: number;
+  status: CouponStatus;
+  createdBy?: string | null;
+  customer?: { id: string; name: string; customerCode: string } | null;
+  campaign?: { id: string; name: string } | null;
+}
+
+export interface CouponCreateDTO {
+  code?: string;
+  name: string;
+  description?: string;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  minimumPurchase?: number;
+  maximumDiscount?: number | null;
+  validFrom: string;
+  validUntil: string;
+  applicabilityMode?: CouponApplicabilityMode;
+  customerId?: string | null;
+  campaignId?: string | null;
+  applicableProductIds?: string[];
+  applicableCategoryIds?: string[];
+  excludedProductIds?: string[];
+  maximumRedemptions?: number;
+  maximumRedemptionsPerCustomer?: number;
+}
+
+export interface NextBillCouponCreateDTO {
+  discountType: CouponDiscountType;
+  discountValue: number;
+  minimumPurchase?: number;
+  maximumDiscount?: number | null;
+  validityDays: number;
+  customerId: string;
+  issuingSalesInvoiceId?: string;
+  deliveryChannel?: CouponDeliveryChannel;
+  applicableProductIds?: string[];
+  applicableCategoryIds?: string[];
+}
+
+export interface CouponValidationInputDTO {
+  code: string;
+  customerId?: string | null;
+  subtotal: number;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    sellingRate: number;
+    categoryId?: string | null;
+  }>;
+}
+
+export interface CouponValidationResultDTO {
+  isValid: boolean;
+  coupon?: CouponDTO;
+  discountAmount: number;
+  message: string;
+  code: string;
+}
+
+export interface CouponRedemptionDTO extends BaseEntity {
+  companyId: string;
+  couponId: string;
+  customerId?: string | null;
+  salesInvoiceId: string;
+  discountAmount: number;
+  billAmountBeforeDiscount: number;
+  billAmountAfterDiscount: number;
+  redeemedBy?: string | null;
+  redeemedAt: Date | string;
+  coupon?: CouponDTO | null;
+  customer?: Customer | null;
+  salesInvoice?: { id: string; invoiceNumber: string } | null;
+}
+
+export interface CouponIssuanceDTO extends BaseEntity {
+  companyId: string;
+  couponId: string;
+  customerId?: string | null;
+  issuingSalesInvoiceId?: string | null;
+  issuedBy?: string | null;
+  issuedAt: Date | string;
+  deliveryChannel: CouponDeliveryChannel;
+  deliveryStatus: CouponDeliveryStatus;
+  deliveryFailureReason?: string | null;
+  coupon?: CouponDTO | null;
+  customer?: Customer | null;
+}
+
+export interface PromotionsKPIsDTO {
+  activeCampaignsCount: number;
+  scheduledCampaignsCount: number;
+  totalCouponsIssued: number;
+  couponsRedeemed: number;
+  couponsExpired: number;
+  couponsRemainingUnused: number;
+  totalDiscountRedeemed: number;
+  redemptionRate: number;
+  totalAttributedSales: number;
+}
+
+// =============================================================================
+// STEP 12: CUSTOMER WALLET & LOYALTY POINTS SYSTEM
+// =============================================================================
+
+export type LoyaltyEarningMethod = 'AMOUNT_SPENT' | 'FLAT_PER_ORDER';
+export type LoyaltyNegativeBalancePolicy = 'ALLOW_NEGATIVE' | 'DEDUCT_FROM_REFUND' | 'CLAMP_TO_ZERO';
+export type LoyaltyWalletStatus = 'ACTIVE' | 'FROZEN' | 'SUSPENDED';
+export type LoyaltyTransactionType =
+  | 'EARN'
+  | 'REDEEM'
+  | 'EXPIRE'
+  | 'RETURN_REVERSAL'
+  | 'RETURN_RESTORE'
+  | 'MANUAL_CREDIT'
+  | 'MANUAL_DEBIT'
+  | 'ADMIN_REVERSAL';
+
+export type LoyaltyLotStatus = 'ACTIVE' | 'FULLY_REDEEMED' | 'EXPIRED' | 'REVERSED';
+
+export interface LoyaltySettingsDTO {
+  id?: string;
+  companyId: string;
+  enabled: boolean;
+  earningMethod: LoyaltyEarningMethod;
+  eligibleAmount: number;
+  pointsPerEligibleAmount: number;
+  redemptionValue: number;
+  minimumRedemptionPoints: number;
+  maximumRedemptionPercentage: number;
+  minimumBillAmount: number;
+  minimumRedemptionIncrement: number;
+  pointExpiryDays: number;
+  allowEarningOnDiscountedBills: boolean;
+  allowEarningOnBillsWithRedemption: boolean;
+  allowEarningOnTax: boolean;
+  allowEarningOnAdditionalCharges: boolean;
+  negativeBalancePolicy: LoyaltyNegativeBalancePolicy;
+  termsAndConditions?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface LoyaltySettingsUpdateDTO {
+  enabled?: boolean;
+  earningMethod?: LoyaltyEarningMethod;
+  eligibleAmount?: number;
+  pointsPerEligibleAmount?: number;
+  redemptionValue?: number;
+  minimumRedemptionPoints?: number;
+  maximumRedemptionPercentage?: number;
+  minimumBillAmount?: number;
+  minimumRedemptionIncrement?: number;
+  pointExpiryDays?: number;
+  allowEarningOnDiscountedBills?: boolean;
+  allowEarningOnBillsWithRedemption?: boolean;
+  allowEarningOnTax?: boolean;
+  allowEarningOnAdditionalCharges?: boolean;
+  negativeBalancePolicy?: LoyaltyNegativeBalancePolicy;
+  termsAndConditions?: string | null;
+}
+
+export interface CustomerWalletDTO extends BaseEntity {
+  companyId: string;
+  customerId: string;
+  cachedAvailablePoints: number;
+  cachedLifetimeEarned: number;
+  cachedLifetimeRedeemed: number;
+  cachedLifetimeExpired: number;
+  cachedLifetimeReversed: number;
+  status: LoyaltyWalletStatus;
+  customer?: Customer | null;
+}
+
+export interface LoyaltyTransactionDTO {
+  id: string;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+  companyId: string;
+  customerId: string;
+  walletId: string;
+  transactionType: LoyaltyTransactionType;
+  points: number;
+  balanceAfter: number;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  salesInvoiceId?: string | null;
+  salesReturnId?: string | null;
+  invoiceNumberSnapshot?: string | null;
+  description?: string | null;
+  reason?: string | null;
+  idempotencyKey?: string | null;
+  reversalOfTransactionId?: string | null;
+  createdBy?: string | null;
+  customer?: Customer | null;
+  salesInvoice?: { id: string; invoiceNumber: string } | null;
+}
+
+export interface LoyaltyPointLotDTO extends BaseEntity {
+  companyId: string;
+  customerId: string;
+  walletId: string;
+  sourceTransactionId: string;
+  originalPoints: number;
+  remainingPoints: number;
+  earnedAt: Date | string;
+  expiresAt?: Date | string | null;
+  status: LoyaltyLotStatus;
+}
+
+export interface LoyaltyTransactionFilterDTO {
+  customerId?: string;
+  transactionType?: LoyaltyTransactionType | 'ALL';
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface LoyaltyRedemptionValidationInputDTO {
+  customerId: string;
+  billSubtotal: number;
+  requestedPoints: number;
+}
+
+export interface LoyaltyRedemptionValidationResultDTO {
+  isValid: boolean;
+  availablePoints: number;
+  maxRedeemablePoints: number;
+  pointsToRedeem: number;
+  redemptionValue: number;
+  discountAmount: number;
+  remainingPoints: number;
+  message?: string;
+}
+
+export interface ManualPointsAdjustmentDTO {
+  customerId: string;
+  adjustmentType: 'CREDIT' | 'DEBIT';
+  points: number;
+  reason: string;
+}
+
+export interface LoyaltyKPIsDTO {
+  totalEnrolledCustomers: number;
+  totalActivePoints: number;
+  estimatedLiabilityAmount: number;
+  lifetimePointsEarned: number;
+  lifetimePointsRedeemed: number;
+  lifetimePointsExpired: number;
+  redemptionRate: number;
+}
+
+export interface LoyaltyReportFilterDTO {
+  startDate?: string;
+  endDate?: string;
+  customerId?: string;
+  transactionType?: LoyaltyTransactionType | 'ALL';
+  page?: number;
+  pageSize?: number;
+}
+
 
 

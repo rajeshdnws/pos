@@ -8,6 +8,7 @@ import {
 } from '@rs-inventory/types';
 import { AppError, ValidationError } from '../errors/app.error.js';
 import { PasswordService } from '../utils/password.js';
+import { SYSTEM_PERMISSIONS } from './permission.service.js';
 
 export interface ActiveSession {
   sessionToken: string;
@@ -135,7 +136,15 @@ export class AuthService {
     });
 
     const sessionToken = `solo-sess-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const permissions = userRecord.role?.permissions.map((p) => p.permission.code) || [];
+
+    const isAdmin =
+      userRecord.role?.name?.toUpperCase() === 'ADMINISTRATOR' ||
+      userRecord.role?.name?.toUpperCase() === 'ADMIN' ||
+      Boolean(userRecord.role?.isSystemRole && userRecord.role?.name?.toUpperCase()?.includes('ADMIN'));
+
+    const permissions = isAdmin
+      ? SYSTEM_PERMISSIONS.map((p) => p.code)
+      : userRecord.role?.permissions.map((p) => p.permission.code) || [];
 
     this.activeSessions.set(sessionToken, {
       sessionToken,

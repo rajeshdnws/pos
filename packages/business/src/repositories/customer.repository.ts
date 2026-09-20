@@ -25,7 +25,11 @@ export class CustomerRepository {
 
     // Customer type filter
     if (filters.customerType) {
-      where.customerType = filters.customerType;
+      if (filters.customerType === 'BUSINESS' || filters.customerType === 'CORPORATE') {
+        where.customerType = { in: ['BUSINESS', 'CORPORATE'] };
+      } else {
+        where.customerType = filters.customerType;
+      }
     }
 
     // City/state filter
@@ -36,7 +40,7 @@ export class CustomerRepository {
       where.state = filters.state;
     }
 
-    // Text search across name, phone, code, email
+    // Text search across name, phone, code, email, gstin, city, contact person
     if (filters.search?.trim()) {
       const q = filters.search.trim();
       where.OR = [
@@ -46,6 +50,7 @@ export class CustomerRepository {
         { customerCode: { contains: q } },
         { gstin: { contains: q } },
         { city: { contains: q } },
+        { contactPerson: { contains: q } },
       ];
     }
 

@@ -272,16 +272,105 @@ The `BackupService` provides offline snapshots of the active SQLite database:
 
 ---
 
-## 14. Future LAN Architecture
+---
 
-In **RS Inventory – LAN**:
+## 15. Product Editions & Feature Comparison
 
-- Multiple cashier terminals running the same React UI connect to a central local server (`server/`).
-- The `DatabaseService` switches from SQLite to PostgreSQL via environment configuration.
-- The business logic and repository interfaces (`IProductRepository`, `ISalesRepository`, etc.) remain identical, guaranteeing zero rewrite of business rules.
+RS Inventory is architected with three product tiers sharing the same core business domain:
+
+| Feature / Capability | RS Inventory – Solo | RS Inventory – LAN *(Step 11)* | RS Inventory – Business *(Step 12)* |
+| :--- | :---: | :---: | :---: |
+| **Primary Deployment** | Single PC / Cash Counter | Local Area Network (Wi-Fi/Ethernet) | Multi-Branch / Cloud Synchronized |
+| **Database Engine** | Embedded SQLite (`rs_inventory.db`) | Central PostgreSQL Server | PostgreSQL + Hybrid Cloud Sync |
+| **Network Connectivity** | 100% Offline (No Internet needed) | Local Subnet (Offline LAN) | Offline-first with Cloud Sync |
+| **Maximum Terminals** | 1 Device | 2 – 10 Cashier Counters | Unlimited Branches & Counters |
+| **Barcode POS & Thermal Billing** | ✅ Yes (58mm / 80mm) | ✅ Yes (Concurrent billing) | ✅ Yes |
+| **Product & Stock Management** | ✅ Full Local Catalog | ✅ Shared Central Catalog | ✅ Central + Branch Allocation |
+| **User Roles & Permissions** | ✅ Local Multi-User RBAC | ✅ Centralized User Management | ✅ Enterprise Hierarchy |
+| **Day-End Closing & Cash Register** | ✅ Local Drawer / Counter | ✅ Counter-Wise & Master Summary | ✅ Branch-Level Reconciliation |
+| **GST & Financial Reports** | ✅ Standard & Advanced Reports | ✅ Consolidated Terminal Reports | ✅ Multi-Branch Consolidated P&L |
+| **Offline Activation via `.rslic`** | ✅ RSA-2048 Signed | ✅ Floating Server License | ✅ Tenant Subscription Key |
+
+---
+
+## 16. Licensing, Activation & Deactivation System
+
+The licensing engine uses **asymmetric RSA-2048 / SHA-256 digital signatures** and strict offline machine-binding.
+
+### Security & Key Isolation Policy
+- **Private Key (`license_private.pem`)**: Stored exclusively inside `tools/license-issuer/keys/private/`. Gitignored, never packaged into installer executables, and used only by RS ORANGE TECH administrators.
+- **Public Verification Key (`license_public.pem`)**: Embedded in the Electron application at `desktop/electron/src/assets/license_public.pem` to verify signatures offline.
+- **Deterministic Canonicalization**: Payloads are sorted using RFC-8785 canonical JSON formatting to ensure tamper-proof signature verification regardless of JSON key order.
+
+---
+
+### Step-by-Step Workflows
+
+#### A. License Creation (RS ORANGE TECH Internal Issuer)
+
+The internal CLI tool in `tools/license-issuer` handles key generation, request validation, and certificate signing:
+
+```bash
+# 1. (One-time) Generate RSA-2048 Keypair
+npm run issuer -- generate-keys
+
+# 2. Issue a Signed License (.rslic) from an Activation Request (.rsreq)
+npm run issuer -- issue \
+  --request "path/to/customer_request.rsreq" \
+  --edition SOLO \
+  --type PERPETUAL \
+  --output "path/to/customer_license.rslic"
+
+# Optional parameters:
+#   --type PERPETUAL | SUBSCRIPTION | TRIAL | EVALUATION
+#   --expires "YYYY-MM-DD"
+#   --updates "YYYY-MM-DD"
+#   --support "YYYY-MM-DD"
+
+# 3. Cryptographically Verify a Generated License
+npm run issuer -- verify --license "path/to/customer_license.rslic"
+```
+
+---
+
+#### B. Customer Offline Activation Process
+
+1. **Open Settings**: Launch RS Inventory and navigate to **Settings > Product License** (`/settings/license`).
+2. **Export Request**:
+   - The application computes a non-invasive hardware fingerprint (`RS-INST-XXXX-XXXX-XXXX`).
+   - Click **"Export Activation Request (.rsreq)"** to save your device request file.
+3. **Send Request**: Email the `.rsreq` file to `license@rsorangetech.com`.
+4. **Receive License**: RS ORANGE TECH signs and issues your official `.rslic` certificate file.
+5. **Import License**:
+   - In the application, click **"Import License File (.rslic)"** (or paste raw JSON key).
+   - The application validates the RSA signature and hardware binding offline.
+   - Upon successful activation, the license status badge updates to `[Solo Licensed]` and feature entitlements unlock immediately.
+6. **Redundant Persistence**: The active license is stored in the local SQLite `License` table and backed up at `%LOCALAPPDATA%\RS-Inventory\license\active_license.rslic` for fast crash recovery.
+
+---
+
+#### C. License Deactivation & PC Transfer Process
+
+1. Navigate to **Settings > Product License**.
+2. Under the license details card, click **"Deactivate License"**.
+3. Confirm the deactivation in the modal dialog:
+   - The application clears the active license from both the database and the local AppData backup.
+   - The status reverts to `UNLICENSED`.
+4. Export a new `.rsreq` activation request file on the destination PC and submit it to transfer your license.
+
+---
+
+#### D. Non-Destructive Expiration Policy
+
+RS Inventory guarantees **zero destructive actions** on expired licenses:
+
+- **Data is Never Deleted or Locked**: All invoices, stock transactions, customer balances, and reports remain permanently intact and viewable.
+- **Reporting & Exports Remain Active**: Users can always search past bills, generate reports, and create SQLite database backups.
+- **Transaction Gating**: Only new operational transactions (`sales.core` for POS billing and `purchases.core` for goods receipt) are halted with a prompt to renew.
 
 ---
 
 ## License
 
-MIT License &copy; 2026 RS Inventory Team
+Copyright &copy; 2026 RS ORANGE TECH PVT LTD. All rights reserved.
+

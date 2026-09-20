@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ChevronRight,
   RefreshCw,
+  Gift,
 } from 'lucide-react';
 import { ReportDashboard } from './ReportDashboard';
 import { SalesReport } from './SalesReport';
@@ -16,6 +17,7 @@ import { PurchaseReport } from './PurchaseReport';
 import { InventoryReport } from './InventoryReport';
 import { FinancialReport } from './FinancialReport';
 import { CashReport } from './CashReport';
+import { LoyaltyReport } from './LoyaltyReport';
 
 type ReportSection =
   | 'dashboard'
@@ -23,7 +25,8 @@ type ReportSection =
   | 'purchase'
   | 'inventory'
   | 'financial'
-  | 'cash';
+  | 'cash'
+  | 'loyalty';
 
 interface NavItem {
   id: ReportSection;
@@ -76,6 +79,13 @@ const NAV_ITEMS: NavItem[] = [
     description: 'Cashbook & closings',
     color: 'cyan',
   },
+  {
+    id: 'loyalty',
+    label: 'Loyalty & Points',
+    icon: Gift,
+    description: 'Liability, KPIs & audit',
+    color: 'pink',
+  },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -85,6 +95,7 @@ const COLOR_MAP: Record<string, string> = {
   amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
   rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
   cyan: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  pink: 'text-pink-400 bg-pink-500/10 border-pink-500/20',
 };
 
 const ACTIVE_MAP: Record<string, string> = {
@@ -94,6 +105,7 @@ const ACTIVE_MAP: Record<string, string> = {
   amber: 'bg-amber-600 text-white shadow-lg shadow-amber-600/20',
   rose: 'bg-rose-600 text-white shadow-lg shadow-rose-600/20',
   cyan: 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20',
+  pink: 'bg-pink-600 text-white shadow-lg shadow-pink-600/20',
 };
 
 export const ReportsIndexPage: React.FC = () => {
@@ -191,6 +203,7 @@ export const ReportsIndexPage: React.FC = () => {
           {activeSection === 'inventory' && <InventoryReport key={refreshKey} />}
           {activeSection === 'financial' && <FinancialReport key={refreshKey} />}
           {activeSection === 'cash' && <CashReport key={refreshKey} />}
+          {activeSection === 'loyalty' && <LoyaltyReport key={refreshKey} />}
         </div>
       </div>
     </div>

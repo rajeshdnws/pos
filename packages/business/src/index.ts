@@ -81,3 +81,14 @@ export * from './services/tax-report.service.js';
 export * from './services/reporting.service.js';
 // Step 10: Licensing & Activation
 export * from './services/license.service.js';
+// Step 11: Communication & Promotional Campaigns
+export * from './utils/credential-crypto.js';
+export * from './services/communication/provider-interfaces.js';
+export * from './services/communication/email.service.js';
+export * from './services/communication/template.service.js';
+export * from './services/communication/communication.service.js';
+export * from './services/promotions/coupon.service.js';
+export * from './services/promotions/campaign.service.js';
+export * from './services/promotions/promotion-report.service.js';
+// Step 12: Customer Wallet & Loyalty Points
+export * from './services/loyalty/index.js';

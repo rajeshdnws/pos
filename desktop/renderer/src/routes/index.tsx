@@ -21,6 +21,7 @@ import { SecurityAuditPage } from '../pages/settings/SecurityAuditPage';
 import { AboutPage } from '../pages/settings/AboutPage';
 import { DataManagementPage } from '../pages/settings/DataManagementPage';
 import { LicenseActivationPage } from '../pages/settings/LicenseActivationPage';
+import { LoyaltySettingsPage } from '../pages/settings/LoyaltySettingsPage';
 import { ProductsIndexPage } from '../pages/products/ProductsIndexPage';
 import { InventoryIndexPage } from '../pages/inventory/InventoryIndexPage';
 import { PurchasesIndexPage } from '../pages/purchases/PurchasesIndexPage';
@@ -30,6 +31,8 @@ import { CustomersIndexPage } from '../pages/customers/CustomersIndexPage';
 import { ExpensesIndexPage } from '../pages/expenses/ExpensesIndexPage';
 import { CashRegisterIndexPage } from '../pages/cash-register/CashRegisterIndexPage';
 import { ReportsIndexPage } from '../pages/reports/ReportsIndexPage';
+import { PromotionsIndexPage } from '../pages/promotions/PromotionsIndexPage';
+import { CommunicationIndexPage } from '../pages/communication/CommunicationIndexPage';
 import { useAuthStore } from '../store/authStore';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
@@ -115,6 +118,17 @@ export const AppRoutes: React.FC = () => {
                   fallback={<AccessDeniedFallback moduleName="Product Licensing & Activation" />}
                 >
                   <LicenseActivationPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="loyalty"
+              element={
+                <PermissionGuard
+                  permission="loyalty.view"
+                  fallback={<AccessDeniedFallback moduleName="Customer Loyalty & Wallet" />}
+                >
+                  <LoyaltySettingsPage />
                 </PermissionGuard>
               }
             />
@@ -325,6 +339,30 @@ export const AppRoutes: React.FC = () => {
                 fallback={<AccessDeniedFallback moduleName="Cash Register & Day-End Closing" />}
               >
                 <CashRegisterIndexPage />
+              </PermissionGuard>
+            }
+          />
+
+          <Route
+            path="/promotions/*"
+            element={
+              <PermissionGuard
+                permission="promotions.view"
+                fallback={<AccessDeniedFallback moduleName="Promotions & Campaigns" />}
+              >
+                <PromotionsIndexPage />
+              </PermissionGuard>
+            }
+          />
+
+          <Route
+            path="/communication/*"
+            element={
+              <PermissionGuard
+                permission="communication.view"
+                fallback={<AccessDeniedFallback moduleName="Communication & Messaging Settings" />}
+              >
+                <CommunicationIndexPage />
               </PermissionGuard>
             }
           />

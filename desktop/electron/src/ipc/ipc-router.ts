@@ -31,6 +31,17 @@ import {
   FinancialDashboardService,
   ReportingService,
   LicenseService,
+  CommunicationService,
+  TemplateService,
+  CouponService,
+  CampaignService,
+  PromotionReportService,
+  LoyaltySettingsService,
+  LoyaltyWalletService,
+  LoyaltyCalculationService,
+  LoyaltyRedemptionService,
+  LoyaltyExpiryService,
+  LoyaltyReportService,
 } from '@rs-inventory/business';
 import { DatabaseService } from '@rs-inventory/database';
 import {
@@ -186,6 +197,20 @@ export function registerIpcHandlers(): void {
   const licenseVerifierService = new LicenseVerifierService(licenseService, machineIdService);
   licenseVerifierService.initialize().catch((err) => loggerService.error('License initialization failed', err));
 
+  // Step 11: Communication & Promotions
+  const communicationService = new CommunicationService(prisma);
+  const templateService = new TemplateService(prisma);
+  const couponService = new CouponService(prisma);
+  const campaignService = new CampaignService(prisma);
+  const promotionReportService = new PromotionReportService(prisma);
+
+  // Step 12: Customer Wallet & Loyalty Points
+  const loyaltySettingsService = new LoyaltySettingsService(prisma);
+  const loyaltyWalletService = new LoyaltyWalletService(prisma);
+  const loyaltyRedemptionService = new LoyaltyRedemptionService(prisma);
+  const loyaltyExpiryService = new LoyaltyExpiryService(prisma);
+  const loyaltyReportService = new LoyaltyReportService(prisma);
+
   // Helper for error formatting
   const handleSuccess = <T>(data: T): ApiResponse<T> => ({ success: true, data });
   const handleError = (error: unknown, defaultCode: string): ApiResponse<any> => {
@@ -210,6 +235,11 @@ export function registerIpcHandlers(): void {
     }
     return company.id;
   };
+
+  const getActiveUserId = (): string | undefined => {
+    return activeSessionUser?.id;
+  };
+
 
   // ---------------- Base Application & System ----------------
 
@@ -2579,6 +2609,603 @@ export function registerIpcHandlers(): void {
       return handleError(err, 'LICENSE_DEACTIVATE_ERROR');
     }
   });
+
+  // ---------------- Step 11: Communication Settings & Logs ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_GET_CONFIG,
+    async (_event, channel: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const config = await communicationService.getConfig(companyId, channel);
+        return handleSuccess(config);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_GET_CONFIG_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_SAVE_CONFIG,
+    async (_event, channel: any, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        let saved: any;
+        if (channel === 'EMAIL') {
+          saved = await communicationService.saveSMTPConfig(companyId, dto);
+        } else if (channel === 'SMS') {
+          saved = await communicationService.saveSMSConfig(companyId, dto);
+        } else if (channel === 'WHATSAPP') {
+          saved = await communicationService.saveWhatsAppConfig(companyId, dto);
+        } else {
+          throw new Error(`Unsupported communication channel: ${channel}`);
+        }
+        return handleSuccess(saved);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_SAVE_CONFIG_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_TEST_CONFIG,
+    async (_event, channel: any, testRecipient?: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const res = await communicationService.testConnection(companyId, channel, testRecipient);
+        return handleSuccess(res);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_TEST_CONFIG_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_LIST_TEMPLATES,
+    async (_event, channel?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const templates = await templateService.listTemplates(companyId, channel);
+        return handleSuccess(templates);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_LIST_TEMPLATES_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_GET_TEMPLATE,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const template = await templateService.getTemplateById(companyId, id);
+        return handleSuccess(template);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_GET_TEMPLATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_CREATE_TEMPLATE,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const template = await templateService.createTemplate(companyId, dto);
+        return handleSuccess(template);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_CREATE_TEMPLATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_UPDATE_TEMPLATE,
+    async (_event, id: string, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const template = await templateService.updateTemplate(companyId, id, dto);
+        return handleSuccess(template);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_UPDATE_TEMPLATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_DELETE_TEMPLATE,
+    async (_event, id: string): Promise<ApiResponse<boolean>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const deleted = await templateService.deleteTemplate(companyId, id);
+        return handleSuccess(deleted);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_DELETE_TEMPLATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_PREVIEW_TEMPLATE,
+    async (_event, templateId: string, sampleData?: Record<string, any>): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const preview = await templateService.previewTemplate(companyId, templateId, sampleData);
+        return handleSuccess(preview);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_PREVIEW_TEMPLATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_LIST_LOGS,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const logs = await communicationService.listLogs(companyId, filters);
+        return handleSuccess(logs);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_LIST_LOGS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COMMUNICATION_RETRY_LOG,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const retried = await communicationService.retryMessage(companyId, id);
+        return handleSuccess(retried);
+      } catch (err) {
+        return handleError(err, 'COMMUNICATION_RETRY_LOG_ERROR');
+      }
+    },
+  );
+
+  // ---------------- Step 11: Promotional Campaigns ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_LIST,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const campaigns = await campaignService.listCampaigns(companyId, filters);
+        return handleSuccess(campaigns);
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_LIST_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_GET,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const campaign = await campaignService.getCampaignById(companyId, id);
+        return handleSuccess(campaign);
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_GET_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_CREATE,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const campaign = await campaignService.createCampaign(companyId, dto, getActiveUserId());
+        return handleSuccess(campaign);
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_CREATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_UPDATE,
+    async (_event, id: string, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const campaign = await campaignService.updateCampaign(companyId, id, dto, getActiveUserId());
+        return handleSuccess(campaign);
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_UPDATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_UPDATE_STATUS,
+    async (_event, id: string, status: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const campaign = await campaignService.changeCampaignStatus(companyId, id, status, getActiveUserId());
+        return handleSuccess(campaign);
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_UPDATE_STATUS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CAMPAIGNS_DISPATCH,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const res = await campaignService.dispatchCampaign(companyId, id, getActiveUserId());
+        return handleSuccess({ dispatched: res.messagesDispatched, failed: res.failed, totalTargeted: res.totalTargeted });
+      } catch (err) {
+        return handleError(err, 'CAMPAIGNS_DISPATCH_ERROR');
+      }
+    },
+  );
+
+  // ---------------- Step 11: Coupons Management ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_LIST,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupons = await couponService.listCoupons(companyId, filters);
+        return handleSuccess(coupons);
+      } catch (err) {
+        return handleError(err, 'COUPONS_LIST_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_GET,
+    async (_event, id: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupon = await couponService.getCouponById(companyId, id);
+        return handleSuccess(coupon);
+      } catch (err) {
+        return handleError(err, 'COUPONS_GET_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_CREATE,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupon = await couponService.createCoupon(companyId, dto, getActiveUserId());
+        return handleSuccess(coupon);
+      } catch (err) {
+        return handleError(err, 'COUPONS_CREATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_UPDATE,
+    async (_event, id: string, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupon = await couponService.updateCoupon(companyId, id, dto, getActiveUserId());
+        return handleSuccess(coupon);
+      } catch (err) {
+        return handleError(err, 'COUPONS_UPDATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_CANCEL,
+    async (_event, id: string, reason?: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupon = await couponService.cancelCoupon(companyId, id, reason, getActiveUserId());
+        return handleSuccess(coupon);
+      } catch (err) {
+        return handleError(err, 'COUPONS_CANCEL_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_GENERATE_CODE,
+    async (_event, prefix?: string): Promise<ApiResponse<string>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const code = await couponService.generateCode(companyId, prefix || 'PROMO');
+        return handleSuccess(code);
+      } catch (err) {
+        return handleError(err, 'COUPONS_GENERATE_CODE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_VALIDATE,
+    async (_event, input: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const validation = await couponService.validateCoupon(companyId, input);
+        return handleSuccess(validation);
+      } catch (err) {
+        return handleError(err, 'COUPONS_VALIDATE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_ISSUE,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const issuance = await couponService.issueCoupon(companyId, dto, getActiveUserId());
+        return handleSuccess(issuance);
+      } catch (err) {
+        return handleError(err, 'COUPONS_ISSUE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_ISSUE_NEXT_BILL,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const coupon = await couponService.issueNextBillCoupon(companyId, dto, getActiveUserId());
+        return handleSuccess(coupon);
+      } catch (err) {
+        return handleError(err, 'COUPONS_ISSUE_NEXT_BILL_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_LIST_REDEMPTIONS,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const redemptions = await couponService.listRedemptions(companyId, filters);
+        return handleSuccess(redemptions);
+      } catch (err) {
+        return handleError(err, 'COUPONS_LIST_REDEMPTIONS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.COUPONS_LIST_ISSUANCES,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const issuances = await couponService.listIssuances(companyId, filters);
+        return handleSuccess(issuances);
+      } catch (err) {
+        return handleError(err, 'COUPONS_LIST_ISSUANCES_ERROR');
+      }
+    },
+  );
+
+  // ---------------- Step 11: Promotion Reports & KPIs ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROMOTIONS_GET_KPIS,
+    async (): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const kpis = await promotionReportService.getPromotionsKPIs(companyId);
+        return handleSuccess(kpis);
+      } catch (err) {
+        return handleError(err, 'PROMOTIONS_GET_KPIS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROMOTIONS_ISSUANCE_REPORT,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const report = await promotionReportService.getIssuanceReport(companyId, filters);
+        return handleSuccess(report);
+      } catch (err) {
+        return handleError(err, 'PROMOTIONS_ISSUANCE_REPORT_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROMOTIONS_REDEMPTION_REPORT,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const report = await promotionReportService.getRedemptionReport(companyId, filters);
+        return handleSuccess(report);
+      } catch (err) {
+        return handleError(err, 'PROMOTIONS_REDEMPTION_REPORT_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROMOTIONS_CAMPAIGN_REPORT,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const report = await promotionReportService.getCampaignPerformanceReport(companyId, filters);
+        return handleSuccess(report);
+      } catch (err) {
+        return handleError(err, 'PROMOTIONS_CAMPAIGN_REPORT_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROMOTIONS_NEXT_BILL_REPORT,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const report = await promotionReportService.getNextBillCouponReport(companyId, filters);
+        return handleSuccess(report);
+      } catch (err) {
+        return handleError(err, 'PROMOTIONS_NEXT_BILL_REPORT_ERROR');
+      }
+    },
+  );
+
+  // ---------------- Step 12: Customer Wallet & Loyalty Points ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_GET_SETTINGS,
+    async (): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const settings = await loyaltySettingsService.getSettings(companyId);
+        return handleSuccess(settings);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_GET_SETTINGS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_UPDATE_SETTINGS,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const settings = await loyaltySettingsService.updateSettings(companyId, dto, getActiveUserId());
+        return handleSuccess(settings);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_UPDATE_SETTINGS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_GET_WALLET,
+    async (_event, customerId: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const wallet = await loyaltyWalletService.getOrCreateWallet(companyId, customerId);
+        return handleSuccess(wallet);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_GET_WALLET_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_GET_TRANSACTIONS,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const txns = await loyaltyWalletService.listTransactions(companyId, filters);
+        return handleSuccess(txns);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_GET_TRANSACTIONS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_CALCULATE_EARN,
+    async (_event, input: { customerId?: string | null; subtotal: number; isDiscounted?: boolean }): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const settings = await loyaltySettingsService.getSettings(companyId);
+        const eligible = LoyaltyCalculationService.calculateEligibleAmount(settings, {
+          subtotal: input.subtotal,
+          lineDiscountTotal: input.isDiscounted ? 1 : 0,
+        });
+        const pointsEarned = LoyaltyCalculationService.calculateEarnedPoints(settings, eligible);
+        return handleSuccess({ pointsEarned, eligibleAmount: eligible });
+      } catch (err) {
+        return handleError(err, 'LOYALTY_CALCULATE_EARN_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_VALIDATE_REDEMPTION,
+    async (_event, input: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const result = await loyaltyRedemptionService.validateRedemption(companyId, input);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_VALIDATE_REDEMPTION_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_MANUAL_ADJUSTMENT,
+    async (_event, dto: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const txn = await loyaltyWalletService.manualAdjustment(companyId, dto, getActiveUserId());
+        return handleSuccess(txn);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_MANUAL_ADJUSTMENT_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_PROCESS_EXPIRY,
+    async (_event, asOfDate?: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const date = asOfDate ? new Date(asOfDate) : new Date();
+        const result = await loyaltyExpiryService.processExpiry(companyId, date);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_PROCESS_EXPIRY_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_GET_KPIS,
+    async (): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const kpis = await loyaltyReportService.getLoyaltyKPIs(companyId);
+        return handleSuccess(kpis);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_GET_KPIS_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_GET_REPORT,
+    async (_event, filters?: any): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const report = await loyaltyReportService.getLoyaltyReport(companyId, filters);
+        return handleSuccess(report);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_GET_REPORT_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOYALTY_RECONCILE_WALLET,
+    async (_event, customerId: string): Promise<ApiResponse<any>> => {
+      try {
+        const companyId = await getRequiredCompanyId();
+        const result = await loyaltyWalletService.reconcileWallet(companyId, customerId);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'LOYALTY_RECONCILE_WALLET_ERROR');
+      }
+    },
+  );
 }
 
 

@@ -13,6 +13,7 @@ import { AuditService } from './audit.service.js';
 import { SalesCalculationService } from './sales-calculation.service.js';
 import { SequenceService } from './sequence.service.js';
 import { StockService } from './stock.service.js';
+import { LoyaltyReturnService } from './loyalty/loyalty-return.service.js';
 
 export class SalesReturnService {
   private repo: SalesReturnRepository;
@@ -266,6 +267,19 @@ export class SalesReturnService {
         where: { id: dto.originalSalesInvoiceId },
         data: { amountReturned: newAmountReturned },
       });
+
+      // 6b. Handle Loyalty Points Reversal & Restoration (Step 12)
+      const loyaltyReturnService = new LoyaltyReturnService(this.prisma);
+      const loyaltyResult = await loyaltyReturnService.handleSalesReturn(
+        companyId,
+        salesReturn.id,
+        dto.originalSalesInvoiceId,
+        grandTotal,
+        userId,
+        tx,
+      );
+      (salesReturn as any).pointsReversed = loyaltyResult.pointsReversed;
+      (salesReturn as any).pointsRestored = loyaltyResult.pointsRestored;
 
       // Record Cash Register movement if refund is paid in cash
       if (dto.refundMode === 'CASH' && grandTotal > 0) {

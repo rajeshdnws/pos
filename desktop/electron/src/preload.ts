@@ -915,6 +915,187 @@ const api: RsInventoryApi = {
   chooseLicenseFile: async (): Promise<ApiResponse<string | null>> => {
     return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_CHOOSE_FILE);
   },
+
+  // Step 11: Communication
+  getCommunicationConfig: async (channel: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_GET_CONFIG, channel);
+  },
+
+  saveCommunicationConfig: async (channel: any, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_SAVE_CONFIG, channel, dto);
+  },
+
+  testCommunicationConfig: async (channel: any, testRecipient?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_TEST_CONFIG, channel, testRecipient);
+  },
+
+  listMessageTemplates: async (channel?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_LIST_TEMPLATES, channel);
+  },
+
+  getMessageTemplate: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_GET_TEMPLATE, id);
+  },
+
+  createMessageTemplate: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_CREATE_TEMPLATE, dto);
+  },
+
+  updateMessageTemplate: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_UPDATE_TEMPLATE, id, dto);
+  },
+
+  deleteMessageTemplate: async (id: string): Promise<ApiResponse<boolean>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_DELETE_TEMPLATE, id);
+  },
+
+  previewMessageTemplate: async (templateId: string, sampleData?: Record<string, any>): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_PREVIEW_TEMPLATE, templateId, sampleData);
+  },
+
+  listCommunicationLogs: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_LIST_LOGS, filters);
+  },
+
+  retryCommunicationLog: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_RETRY_LOG, id);
+  },
+
+  // Step 11: Campaigns
+  listCampaigns: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_LIST, filters);
+  },
+
+  getCampaign: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_GET, id);
+  },
+
+  createCampaign: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_CREATE, dto);
+  },
+
+  updateCampaign: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_UPDATE, id, dto);
+  },
+
+  updateCampaignStatus: async (id: string, status: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_UPDATE_STATUS, id, status);
+  },
+
+  dispatchCampaign: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CAMPAIGNS_DISPATCH, id);
+  },
+
+  // Step 11: Coupons
+  listCoupons: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_LIST, filters);
+  },
+
+  getCoupon: async (id: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_GET, id);
+  },
+
+  createCoupon: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_CREATE, dto);
+  },
+
+  updateCoupon: async (id: string, dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_UPDATE, id, dto);
+  },
+
+  cancelCoupon: async (id: string, reason?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_CANCEL, id, reason);
+  },
+
+  generateCouponCode: async (prefix?: string): Promise<ApiResponse<string>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_GENERATE_CODE, prefix);
+  },
+
+  validateCoupon: async (input: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_VALIDATE, input);
+  },
+
+  issueCoupon: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_ISSUE, dto);
+  },
+
+  issueNextBillCoupon: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_ISSUE_NEXT_BILL, dto);
+  },
+
+  listCouponRedemptions: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_LIST_REDEMPTIONS, filters);
+  },
+
+  listCouponIssuances: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.COUPONS_LIST_ISSUANCES, filters);
+  },
+
+  // Step 11: Promotion Reports & KPIs
+  getPromotionsKPIs: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROMOTIONS_GET_KPIS);
+  },
+
+  getCouponIssuanceReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROMOTIONS_ISSUANCE_REPORT, filters);
+  },
+
+  getCouponRedemptionReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROMOTIONS_REDEMPTION_REPORT, filters);
+  },
+
+  getCampaignPerformanceReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROMOTIONS_CAMPAIGN_REPORT, filters);
+  },
+
+  getNextBillCouponReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROMOTIONS_NEXT_BILL_REPORT, filters);
+  },
+
+  // Step 12: Customer Wallet & Loyalty Points
+  getLoyaltySettings: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_GET_SETTINGS);
+  },
+
+  updateLoyaltySettings: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_UPDATE_SETTINGS, dto);
+  },
+
+  getCustomerWallet: async (customerId: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_GET_WALLET, customerId);
+  },
+
+  listLoyaltyTransactions: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_GET_TRANSACTIONS, filters);
+  },
+
+  calculateLoyaltyEarn: async (input: { customerId?: string | null; subtotal: number; isDiscounted?: boolean }): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_CALCULATE_EARN, input);
+  },
+
+  validateLoyaltyRedemption: async (input: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_VALIDATE_REDEMPTION, input);
+  },
+
+  performManualLoyaltyAdjustment: async (dto: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_MANUAL_ADJUSTMENT, dto);
+  },
+
+  processLoyaltyExpiry: async (asOfDate?: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_PROCESS_EXPIRY, asOfDate);
+  },
+
+  getLoyaltyKPIs: async (): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_GET_KPIS);
+  },
+
+  getLoyaltyReport: async (filters?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_GET_REPORT, filters);
+  },
+
+  reconcileCustomerWallet: async (customerId: string): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.LOYALTY_RECONCILE_WALLET, customerId);
+  },
 };
 
 // Expose safe, strictly typed API to renderer via contextBridge

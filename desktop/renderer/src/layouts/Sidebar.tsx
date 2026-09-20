@@ -13,6 +13,8 @@ import {
   Store,
   Wallet,
   CircleDollarSign,
+  Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -33,8 +35,10 @@ const navItems: NavItem[] = [
   { name: 'Inventory', to: '/inventory', icon: Boxes, permission: 'inventory.view' },
   { name: 'Customers', to: '/customers', icon: Users, permission: 'customers.view' },
   { name: 'Suppliers', to: '/suppliers', icon: Truck, permission: 'suppliers.view' },
+  { name: 'Promotions', to: '/promotions', icon: Sparkles, permission: 'promotions.view' },
+  { name: 'Communication', to: '/communication', icon: MessageSquare, permission: 'communication.view' },
   { name: 'Reports', to: '/reports', icon: BarChart3, permission: 'reports.view' },
-  { name: 'Settings', to: '/settings/profile', icon: Settings, permission: 'settings.view' },
+  { name: 'Settings', to: '/settings/business', icon: Settings, permission: 'settings.view' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -64,7 +68,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin scrollbar-thumb-surface-700">
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Users,
   Search,
@@ -15,6 +15,7 @@ import {
   TrendingUp,
   CreditCard,
   ShoppingCart,
+  X,
 } from 'lucide-react';
 import { Customer, CustomerFilterDTO } from '@rs-inventory/types';
 import { formatCurrency } from '@rs-inventory/business';
@@ -42,6 +43,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
 
   // Filters
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -52,9 +54,37 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
   // Details Modal
   const [detailsCustomer, setDetailsCustomer] = useState<Customer | null>(null);
 
+  // Debounce search input by 250ms for smooth live auto-search
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Track previous filter criteria to reset page if any filter or search changes
+  const prevFiltersRef = useRef({ search: '', active: 'all', type: 'all' });
+
+  useEffect(() => {
+    const filtersChanged =
+      prevFiltersRef.current.search !== debouncedSearch ||
+      prevFiltersRef.current.active !== activeFilter ||
+      prevFiltersRef.current.type !== typeFilter;
+
+    if (filtersChanged) {
+      prevFiltersRef.current = {
+        search: debouncedSearch,
+        active: activeFilter,
+        type: typeFilter,
+      };
+      if (page !== 1) {
+        setPage(1);
+        return; // setPage(1) will cause this effect to fire again with page === 1
+      }
+    }
+
     loadCustomers();
-  }, [page, activeFilter, typeFilter]);
+  }, [page, debouncedSearch, activeFilter, typeFilter]);
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -62,8 +92,9 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
       const filter: CustomerFilterDTO = {
         page,
         pageSize,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
         isActive: activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
+        status: activeFilter === 'all' ? undefined : (activeFilter as any),
         customerType: typeFilter !== 'all' ? (typeFilter as any) : undefined,
       };
 
@@ -84,8 +115,28 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(1);
-    loadCustomers();
+    setDebouncedSearch(search);
+    if (page !== 1) {
+      setPage(1);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    if (page !== 1) {
+      setPage(1);
+    }
+  };
+
+  const handleResetAllFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setActiveFilter('all');
+    setTypeFilter('all');
+    if (page !== 1) {
+      setPage(1);
+    }
   };
 
   const handleToggleActive = async (customer: Customer) => {
@@ -172,18 +223,25 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, phone, code, GSTIN..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white transition-colors"
+              title="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </form>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <select
             value={activeFilter}
-            onChange={(e) => {
-              setActiveFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500"
+            onChange={(e) => setActiveFilter(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500 transition-colors"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -192,18 +250,27 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
 
           <select
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500"
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl bg-surface-950 border border-surface-700 text-white focus:outline-none focus:border-brand-500 transition-colors"
           >
             <option value="all">All Customer Types</option>
             <option value="INDIVIDUAL">Individual / Walk-in</option>
-            <option value="RETAIL">Retail</option>
-            <option value="WHOLESALE">Wholesale</option>
-            <option value="CORPORATE">Corporate</option>
+            <option value="BUSINESS">Business / Corporate</option>
+            <option value="RETAIL">Retail Regular</option>
+            <option value="WHOLESALE">Wholesale Client</option>
           </select>
+
+          {(search || activeFilter !== 'all' || typeFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={handleResetAllFilters}
+              className="px-2.5 py-2 rounded-xl bg-surface-800 hover:bg-surface-700 text-brand-400 hover:text-brand-300 border border-surface-700 text-xs font-medium transition-colors flex items-center gap-1.5"
+              title="Reset all filters"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
 
           <button
             onClick={() => loadCustomers()}

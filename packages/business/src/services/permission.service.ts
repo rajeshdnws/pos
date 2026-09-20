@@ -551,6 +551,150 @@ export const SYSTEM_PERMISSIONS: SystemPermissionDef[] = [
     description: 'Create roles and configure role-permission assignments',
     module: 'Users',
   },
+
+  // Step 11: Communication & Messaging
+  {
+    code: 'communication.view',
+    name: 'View Communication Settings',
+    description: 'View email, SMS, WhatsApp configs and communication logs',
+    module: 'Communication',
+  },
+  {
+    code: 'communication.configure',
+    name: 'Configure Communication Providers',
+    description: 'Setup and modify SMTP, Twilio, and WhatsApp API credentials',
+    module: 'Communication',
+  },
+  {
+    code: 'communication.send_test',
+    name: 'Send Test Communications',
+    description: 'Send test emails, test SMS, and test WhatsApp messages',
+    module: 'Communication',
+  },
+  {
+    code: 'communication.send_marketing',
+    name: 'Send Marketing Communications',
+    description: 'Dispatch promotional marketing messages to customer groups',
+    module: 'Communication',
+  },
+  {
+    code: 'templates.manage',
+    name: 'Manage Message Templates',
+    description: 'Create, edit, and preview message templates and placeholders',
+    module: 'Communication',
+  },
+
+  // Step 11: Promotional Campaigns & Coupons
+  {
+    code: 'promotions.view',
+    name: 'View Promotions & Campaigns',
+    description: 'Access promotional campaigns dashboard and status',
+    module: 'Promotions',
+  },
+  {
+    code: 'promotions.create',
+    name: 'Create Promotional Campaigns',
+    description: 'Create targeted promotional campaigns and marketing blasts',
+    module: 'Promotions',
+  },
+  {
+    code: 'promotions.edit',
+    name: 'Edit Promotional Campaigns',
+    description: 'Update campaigns, target groups, and linked coupons',
+    module: 'Promotions',
+  },
+  {
+    code: 'promotions.activate',
+    name: 'Activate & Dispatch Campaigns',
+    description: 'Schedule, pause, and launch active campaign blasts',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.view',
+    name: 'View Coupons',
+    description: 'View coupon list, redemptions, and active status',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.create',
+    name: 'Create Coupons',
+    description: 'Create discount coupons with rules and limits',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.edit',
+    name: 'Edit Coupons',
+    description: 'Modify coupon rules, dates, and discount values',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.issue',
+    name: 'Issue Coupons',
+    description: 'Issue coupons to customers and generate next-bill vouchers',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.redeem',
+    name: 'Redeem Coupons',
+    description: 'Apply and validate coupons during POS billing checkout',
+    module: 'Promotions',
+  },
+  {
+    code: 'coupons.cancel',
+    name: 'Cancel Coupons',
+    description: 'Deactivate and revoke promotional coupons',
+    module: 'Promotions',
+  },
+  {
+    code: 'promotions.reports.view',
+    name: 'View Promotion Reports',
+    description: 'View coupon issuance, redemption, and next-bill analytics reports',
+    module: 'Promotions',
+  },
+
+  // Step 12: Customer Wallet & Loyalty Points
+  {
+    code: 'loyalty.view',
+    name: 'View Loyalty Settings & Wallets',
+    description: 'View customer loyalty points, wallet balances, and program settings',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.view_customer_wallet',
+    name: 'View Customer Wallet Ledger',
+    description: 'Inspect full transaction ledger and points history for customer wallets',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.redeem',
+    name: 'Redeem Loyalty Points',
+    description: 'Redeem customer loyalty points for discounts at POS billing checkout',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.adjust',
+    name: 'Manual Points Adjustment',
+    description: 'Perform manual points credits and debits on customer wallets',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.reverse',
+    name: 'Reverse Loyalty Points',
+    description: 'Perform reversals or cancellations of loyalty points transactions',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.settings.manage',
+    name: 'Manage Loyalty Program Settings',
+    description: 'Configure points earning rates, redemption values, minimums, and expiry',
+    module: 'Loyalty',
+  },
+  {
+    code: 'loyalty.reports.view',
+    name: 'View Loyalty Reports',
+    description: 'Access loyalty points liability and performance analytics reports',
+    module: 'Loyalty',
+  },
 ];
 
 export const ROLE_PERMISSION_MAP: Record<
@@ -625,6 +769,28 @@ export const ROLE_PERMISSION_MAP: Record<
     'dayEndClosing.view',
     'dayEndClosing.close',
     'dayEndClosing.approve_difference',
+    'communication.view',
+    'communication.configure',
+    'communication.send_test',
+    'communication.send_marketing',
+    'templates.manage',
+    'promotions.view',
+    'promotions.create',
+    'promotions.edit',
+    'promotions.activate',
+    'coupons.view',
+    'coupons.create',
+    'coupons.edit',
+    'coupons.issue',
+    'coupons.redeem',
+    'coupons.cancel',
+    'promotions.reports.view',
+    'loyalty.view',
+    'loyalty.view_customer_wallet',
+    'loyalty.redeem',
+    'loyalty.adjust',
+    'loyalty.settings.manage',
+    'loyalty.reports.view',
   ],
 
   CASHIER: [
@@ -645,6 +811,12 @@ export const ROLE_PERMISSION_MAP: Record<
     'cashbook.view',
     'dayEndClosing.view',
     'dayEndClosing.close',
+    'promotions.view',
+    'coupons.view',
+    'coupons.issue',
+    'coupons.redeem',
+    'loyalty.view',
+    'loyalty.redeem',
   ],
 
   INVENTORY_OPERATOR: [
@@ -697,6 +869,8 @@ export const ROLE_PERMISSION_MAP: Record<
     'dayEndClosing.close',
     'dayEndClosing.approve_difference',
     'reports.view',
+    'loyalty.view',
+    'loyalty.reports.view',
   ],
 };
 
@@ -722,5 +896,73 @@ export class PermissionService {
   public static getPermissionsForRole(roleName: string): string[] {
     const key = roleName.toUpperCase() as keyof typeof ROLE_PERMISSION_MAP;
     return ROLE_PERMISSION_MAP[key] || [];
+  }
+
+  /**
+   * Synchronizes all system permissions and default role mappings into the database.
+   * Safe to run idempotently on startup.
+   */
+  public static async syncSystemPermissions(prisma: any): Promise<void> {
+    try {
+      // 1. Upsert all system permissions
+      for (const perm of SYSTEM_PERMISSIONS) {
+        await prisma.permission.upsert({
+          where: { code: perm.code },
+          update: { name: perm.name, description: perm.description, module: perm.module },
+          create: {
+            code: perm.code,
+            name: perm.name,
+            description: perm.description,
+            module: perm.module,
+          },
+        });
+      }
+
+      // 2. Fetch all permissions from DB
+      const allDbPerms = await prisma.permission.findMany({ select: { id: true, code: true } });
+      const permMap = new Map(allDbPerms.map((p: any) => [p.code, p.id]));
+
+      // 3. Find roles in the DB
+      const roles = await prisma.role.findMany({
+        include: {
+          permissions: { select: { permissionId: true } },
+        },
+      });
+
+      for (const role of roles) {
+        const roleNameUpper = role.name.toUpperCase();
+        let targetCodes: string[] = [];
+
+        if (roleNameUpper === 'ADMINISTRATOR' || roleNameUpper === 'ADMIN') {
+          targetCodes = SYSTEM_PERMISSIONS.map((p) => p.code);
+        } else if (ROLE_PERMISSION_MAP[roleNameUpper as keyof typeof ROLE_PERMISSION_MAP]) {
+          targetCodes = ROLE_PERMISSION_MAP[roleNameUpper as keyof typeof ROLE_PERMISSION_MAP];
+        }
+
+        if (targetCodes.length > 0) {
+          const existingPermIds = new Set(role.permissions.map((rp: any) => rp.permissionId));
+          for (const code of targetCodes) {
+            const permId = permMap.get(code);
+            if (permId && !existingPermIds.has(permId)) {
+              await prisma.rolePermission.upsert({
+                where: {
+                  roleId_permissionId: {
+                    roleId: role.id,
+                    permissionId: permId,
+                  },
+                },
+                update: {},
+                create: {
+                  roleId: role.id,
+                  permissionId: permId,
+                },
+              });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error synchronizing system permissions:', err);
+    }
   }
 }
