@@ -115,6 +115,13 @@ export const IPC_CHANNELS = {
   LICENSE_DEACTIVATE: 'license:deactivate',
   LICENSE_CHOOSE_FILE: 'license:choose-file',
 
+  // Step 10b: Remote Tracking & Telemetry
+  TELEMETRY_REGISTER_INSTALLATION: 'telemetry:register-installation',
+  TELEMETRY_SYNC_STORE_PROFILE: 'telemetry:sync-store-profile',
+  TELEMETRY_ACTIVATE_LICENSE_ONLINE: 'telemetry:activate-license-online',
+  TELEMETRY_VALIDATE_LICENSE_ONLINE: 'telemetry:validate-license-online',
+
+
   // Step 11: Communication Configuration
   COMMUNICATION_GET_CONFIG: 'communication:get-config',
   COMMUNICATION_SAVE_CONFIG: 'communication:save-config',
@@ -658,6 +665,13 @@ export interface RsInventoryApi {
   activateLicenseContent: (licenseFileContent: string) => Promise<ApiResponse<import('./license.js').LicenseStatusDTO>>;
   deactivateLicense: () => Promise<ApiResponse<{ success: boolean; message: string }>>;
   chooseLicenseFile: () => Promise<ApiResponse<string | null>>;
+
+  // Step 10b: Remote Tracking & Telemetry
+  registerInstallationTelemetry: (customParams?: Partial<import('./telemetry.js').InstallationRegisterRequestDTO>) => Promise<ApiResponse<import('./telemetry.js').InstallationRegisterResponseDTO | null>>;
+  syncStoreProfileTelemetry: (profile: Partial<import('./telemetry.js').StoreProfileTelemetryRequestDTO>) => Promise<ApiResponse<import('./telemetry.js').StoreProfileTelemetryResponseDTO | null>>;
+  activateLicenseOnline: (licenseKey: string, customParams?: Partial<import('./telemetry.js').LicenseActivateApiRequestDTO>) => Promise<ApiResponse<import('./telemetry.js').LicenseActivateApiResponseDTO | null>>;
+  validateLicenseOnline: (licenseKey: string, customParams?: Partial<import('./telemetry.js').LicenseValidateApiRequestDTO>) => Promise<ApiResponse<import('./telemetry.js').LicenseValidateApiResponseDTO | null>>;
+
 
   // Step 11: Communication
   getCommunicationConfig: (channel: import('./domain.js').CommunicationChannel) => Promise<ApiResponse<import('./domain.js').CommunicationProviderConfigDTO | null>>;

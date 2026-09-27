@@ -33,11 +33,27 @@ export class DatabaseService {
 
     // If database file does not exist or is smaller than 10KB (empty / incomplete), seed it from template
     if (!fs.existsSync(dbFilePath) || fs.statSync(dbFilePath).size < 10240) {
+      const dbFileName = path.basename(dbFilePath);
       const candidates = [
+        path.resolve(process.cwd(), `packages/database/prisma/dev-data/database/${dbFileName}`),
+        path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventorysolo.db'),
+        path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventory_solo.db'),
         path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventory.db'),
+        path.resolve(__dirname, `../prisma/dev-data/database/${dbFileName}`),
+        path.resolve(__dirname, '../prisma/dev-data/database/rs_inventorysolo.db'),
+        path.resolve(__dirname, '../prisma/dev-data/database/rs_inventory_solo.db'),
         path.resolve(__dirname, '../prisma/dev-data/database/rs_inventory.db'),
+        path.resolve(__dirname, `../../packages/database/prisma/dev-data/database/${dbFileName}`),
+        path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventorysolo.db'),
+        path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventory_solo.db'),
         path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventory.db'),
+        path.resolve(__dirname, `../../../packages/database/prisma/dev-data/database/${dbFileName}`),
+        path.resolve(__dirname, '../../../packages/database/prisma/dev-data/database/rs_inventorysolo.db'),
+        path.resolve(__dirname, '../../../packages/database/prisma/dev-data/database/rs_inventory_solo.db'),
         path.resolve(__dirname, '../../../packages/database/prisma/dev-data/database/rs_inventory.db'),
+        path.resolve(process.cwd(), `dev-data/database/${dbFileName}`),
+        path.resolve(process.cwd(), 'dev-data/database/rs_inventorysolo.db'),
+        path.resolve(process.cwd(), 'dev-data/database/rs_inventory_solo.db'),
         path.resolve(process.cwd(), 'dev-data/database/rs_inventory.db'),
       ];
       for (const candidate of candidates) {
@@ -58,6 +74,26 @@ export class DatabaseService {
     const datasourceUrl = `file:${normalizedPath}`;
 
     process.env.DATABASE_URL = datasourceUrl;
+
+    // Resolve Prisma query engine library path for packaged Electron app
+    if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
+      const resourcesPath = (process as unknown as { resourcesPath?: string }).resourcesPath;
+      const engineCandidates = [
+        path.join(process.cwd(), 'query_engine-windows.dll.node'),
+        path.join(__dirname, 'query_engine-windows.dll.node'),
+        path.join(__dirname, '../query_engine-windows.dll.node'),
+        ...(resourcesPath ? [
+          path.join(resourcesPath, 'query_engine-windows.dll.node'),
+          path.join(resourcesPath, 'app.asar.unpacked', 'dist-electron', 'query_engine-windows.dll.node'),
+        ] : []),
+      ];
+      for (const candidate of engineCandidates) {
+        if (candidate && fs.existsSync(candidate)) {
+          process.env.PRISMA_QUERY_ENGINE_LIBRARY = candidate;
+          break;
+        }
+      }
+    }
 
     this.prisma = new PrismaClient({
       datasources: {

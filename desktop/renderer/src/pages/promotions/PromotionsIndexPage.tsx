@@ -22,7 +22,7 @@ import {
   PromotionsKPIsDTO,
   CampaignStatus,
 } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 
 export const PromotionsIndexPage: React.FC = () => {

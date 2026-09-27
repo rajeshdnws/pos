@@ -11,7 +11,7 @@ import {
   Package,
 } from 'lucide-react';
 import { SalesReturn, SalesReturnFilterDTO } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { SalesReturnModal } from './SalesReturnModal';
 

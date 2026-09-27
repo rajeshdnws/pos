@@ -9,7 +9,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { PurchaseDashboardKPIs, Purchase } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 
 interface PurchaseDashboardTabProps {
   onNewPurchase: () => void;

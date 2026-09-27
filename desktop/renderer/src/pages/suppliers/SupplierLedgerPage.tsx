@@ -9,7 +9,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { Supplier, SupplierStatementResult, SupplierLedgerEntry } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 
 interface SupplierLedgerPageProps {

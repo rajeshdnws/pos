@@ -49,21 +49,34 @@ export class LoyaltyWalletService {
       throw new NotFoundError('Customer not found for this company.');
     }
 
-    const created = await client.customerWallet.create({
-      data: {
-        companyId,
-        customerId,
-        cachedAvailablePoints: 0,
-        cachedLifetimeEarned: 0,
-        cachedLifetimeRedeemed: 0,
-        cachedLifetimeExpired: 0,
-        cachedLifetimeReversed: 0,
-        status: 'ACTIVE',
-      },
-      include: { customer: true },
-    });
+    try {
+      const created = await client.customerWallet.create({
+        data: {
+          companyId,
+          customerId,
+          cachedAvailablePoints: 0,
+          cachedLifetimeEarned: 0,
+          cachedLifetimeRedeemed: 0,
+          cachedLifetimeExpired: 0,
+          cachedLifetimeReversed: 0,
+          status: 'ACTIVE',
+        },
+        include: { customer: true },
+      });
 
-    return this.mapWalletToDTO(created);
+      return this.mapWalletToDTO(created);
+    } catch (err: any) {
+      if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+        const fallback = await client.customerWallet.findUnique({
+          where: { customerId },
+          include: { customer: true },
+        });
+        if (fallback) {
+          return this.mapWalletToDTO(fallback);
+        }
+      }
+      throw err;
+    }
   }
 
   /**

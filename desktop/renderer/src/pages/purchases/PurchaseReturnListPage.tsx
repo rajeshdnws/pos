@@ -7,7 +7,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { PurchaseReturn, PurchaseReturnFilterDTO, Supplier } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { PurchaseReturnDetailsModal } from './PurchaseReturnDetailsModal';
 

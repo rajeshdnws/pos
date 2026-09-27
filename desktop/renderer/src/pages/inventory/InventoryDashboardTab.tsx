@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { CurrentStockItem, InventoryKPIs, InventoryValuationReport } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 
 interface InventoryDashboardTabProps {
   onNavigateTab: (tab: string) => void;

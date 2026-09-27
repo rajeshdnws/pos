@@ -17,7 +17,7 @@ import {
   InventoryLocation,
   StockStatus,
 } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 import { ProductDetailsModal } from '../products/ProductDetailsModal';
 
 export const CurrentStockTab: React.FC = () => {

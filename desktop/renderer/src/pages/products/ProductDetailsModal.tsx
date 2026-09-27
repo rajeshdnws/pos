@@ -17,7 +17,7 @@ import {
   ProductPriceHistory,
   StockMovement,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDateTime } from '@rs-inventory/business';
+import { formatCurrency, formatDateTime } from '@rs-inventory/types';
 
 interface ProductDetailsModalProps {
   product?: Product | null;

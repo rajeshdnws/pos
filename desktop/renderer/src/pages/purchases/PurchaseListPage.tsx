@@ -22,7 +22,7 @@ import {
   PurchasePaymentStatus,
   Supplier,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { PurchaseDetailsModal } from './PurchaseDetailsModal';
 import { RecordPaymentModal } from './RecordPaymentModal';

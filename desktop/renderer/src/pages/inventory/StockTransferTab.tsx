@@ -16,7 +16,7 @@ import {
   StockTransferCreateDTO,
   StockTransferItemDTO,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDateTime } from '@rs-inventory/business';
+import { formatCurrency, formatDateTime } from '@rs-inventory/types';
 
 export const StockTransferTab: React.FC = () => {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);

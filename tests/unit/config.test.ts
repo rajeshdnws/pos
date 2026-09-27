@@ -25,10 +25,35 @@ describe('ConfigService', () => {
     const logPath = configService.getLogPath();
     const exportPath = configService.getExportPath();
 
-    expect(dbPath).toContain('rs_inventory.db');
+    expect(dbPath).toMatch(/rs_inventory_\w+\.db/);
     expect(backupPath).toContain('backups');
     expect(logPath).toContain('application.log');
     expect(exportPath).toContain('exports');
+  });
+
+  it('should format database path differently for each edition (solo, lan, business)', () => {
+    // 1. Solo Edition
+    process.env.APP_EDITION = 'solo';
+    ConfigService.resetInstance();
+    let configService = ConfigService.getInstance();
+    expect(configService.getAppEdition()).toBe('solo');
+    expect(configService.getDatabasePath()).toContain('rs_inventory_solo.db');
+
+    // 2. LAN Edition
+    process.env.APP_EDITION = 'lan';
+    ConfigService.resetInstance();
+    configService = ConfigService.getInstance();
+    expect(configService.getAppEdition()).toBe('lan');
+    expect(configService.getDatabasePath()).toContain('rs_inventory_lan.db');
+
+    // 3. Business Edition
+    process.env.APP_EDITION = 'business';
+    ConfigService.resetInstance();
+    configService = ConfigService.getInstance();
+    expect(configService.getAppEdition()).toBe('business');
+    expect(configService.getDatabasePath()).toContain('rs_inventory_business.db');
+
+    delete process.env.APP_EDITION;
   });
 
   it('should automatically create required directories if they do not exist', () => {

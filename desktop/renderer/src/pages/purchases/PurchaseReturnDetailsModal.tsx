@@ -5,7 +5,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { PurchaseReturn } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 
 interface PurchaseReturnDetailsModalProps {
   returnId: string | null;

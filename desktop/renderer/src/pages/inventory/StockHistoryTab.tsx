@@ -15,7 +15,7 @@ import {
   StockMovementFilterDTO,
   StockMovementType,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDateTime } from '@rs-inventory/business';
+import { formatCurrency, formatDateTime } from '@rs-inventory/types';
 
 export const StockHistoryTab: React.FC = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);

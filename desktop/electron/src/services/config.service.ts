@@ -15,6 +15,7 @@ export class ConfigService {
 
   private readonly appName: string;
   private readonly appVersion: string;
+  private readonly appEdition: string;
   private readonly environment: Environment;
   private readonly appDataRoot: string;
   private readonly databasePath: string;
@@ -26,6 +27,10 @@ export class ConfigService {
   private constructor() {
     this.appName = process.env.APP_NAME || 'RS Inventory';
     this.appVersion = process.env.APP_VERSION || '1.0.0';
+
+    const rawEdition =
+      process.env.APP_EDITION || process.env.EDITION || process.env.PRODUCT_EDITION || 'solo';
+    this.appEdition = rawEdition.toLowerCase().trim();
 
     const envStr = (process.env.NODE_ENV || process.env.ENVIRONMENT || 'development').toLowerCase();
     this.environment =
@@ -40,9 +45,10 @@ export class ConfigService {
 
     this.appDataRoot = path.join(baseAppData, this.appName);
 
-    // Paths can be overridden via environment variables or default to AppData subdirectories
+    // Paths can be overridden via environment variables or default to edition-specific database file (rs_inventory_solo.db, rs_inventory_lan.db, rs_inventory_business.db)
+    const defaultDbFileName = `rs_inventory_${this.appEdition}.db`;
     this.databasePath =
-      process.env.DATABASE_PATH || path.join(this.appDataRoot, 'database', 'rs_inventory.db');
+      process.env.DATABASE_PATH || path.join(this.appDataRoot, 'database', defaultDbFileName);
     this.backupPath = process.env.BACKUP_PATH || path.join(this.appDataRoot, 'backups');
     this.logPath = process.env.LOG_PATH || path.join(this.appDataRoot, 'logs', 'application.log');
     this.exportPath = process.env.EXPORT_PATH || path.join(this.appDataRoot, 'exports');
@@ -70,6 +76,10 @@ export class ConfigService {
 
   public getAppVersion(): string {
     return this.appVersion;
+  }
+
+  public getAppEdition(): string {
+    return this.appEdition;
   }
 
   public getEnvironment(): Environment {
@@ -104,6 +114,7 @@ export class ConfigService {
     return {
       appName: this.appName,
       appVersion: this.appVersion,
+      appEdition: this.appEdition,
       environment: this.environment,
       databasePath: this.databasePath,
       backupPath: this.backupPath,

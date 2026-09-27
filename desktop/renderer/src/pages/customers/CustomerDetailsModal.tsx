@@ -23,7 +23,7 @@ import {
   LoyaltyTransactionDTO,
   LoyaltySettingsDTO,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 
 interface CustomerDetailsModalProps {

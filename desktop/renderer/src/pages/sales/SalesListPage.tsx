@@ -22,7 +22,7 @@ import {
   SalesPaymentStatus,
   SalesInvoiceStatus,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { SalesDetailsModal } from './SalesDetailsModal';
 import { PrintSalesReceiptModal } from './PrintSalesReceiptModal';

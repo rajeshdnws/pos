@@ -916,6 +916,24 @@ const api: RsInventoryApi = {
     return ipcRenderer.invoke(IPC_CHANNELS.LICENSE_CHOOSE_FILE);
   },
 
+  // Step 10b: Remote Tracking & Telemetry
+  registerInstallationTelemetry: async (customParams?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.TELEMETRY_REGISTER_INSTALLATION, customParams);
+  },
+
+  syncStoreProfileTelemetry: async (profile: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.TELEMETRY_SYNC_STORE_PROFILE, profile);
+  },
+
+  activateLicenseOnline: async (licenseKey: string, customParams?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.TELEMETRY_ACTIVATE_LICENSE_ONLINE, licenseKey, customParams);
+  },
+
+  validateLicenseOnline: async (licenseKey: string, customParams?: any): Promise<ApiResponse<any>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.TELEMETRY_VALIDATE_LICENSE_ONLINE, licenseKey, customParams);
+  },
+
+
   // Step 11: Communication
   getCommunicationConfig: async (channel: any): Promise<ApiResponse<any>> => {
     return ipcRenderer.invoke(IPC_CHANNELS.COMMUNICATION_GET_CONFIG, channel);

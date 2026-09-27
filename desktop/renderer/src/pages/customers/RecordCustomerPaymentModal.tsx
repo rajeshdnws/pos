@@ -5,7 +5,7 @@ import {
   Save,
 } from 'lucide-react';
 import { Customer, SalesPaymentCreateDTO } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 
 interface RecordCustomerPaymentModalProps {

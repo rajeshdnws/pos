@@ -10,7 +10,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { SalesInvoice } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { PrintSalesReceiptModal } from './PrintSalesReceiptModal';
 
 interface SalesDetailsModalProps {

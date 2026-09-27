@@ -1,13 +1,14 @@
 /**
- * RS Inventory - LAN Server Stub
- *
- * In RS Inventory - LAN:
- * This server will connect to PostgreSQL using the same @rs-inventory/business
- * service layer and repository contracts, allowing multi-device connectivity.
+ * RS Inventory - LAN & Telemetry Server
+ * Company: RS ORANGE TECH PVT LTD
  */
 
+export * from './tracking-store.js';
+export * from './tracking-router.js';
+export * from './tracking-server.js';
+
 export const SERVER_INFO = {
-  name: 'RS Inventory LAN Server (Future Architecture)',
+  name: 'RS Inventory Tracking & Telemetry Server',
   version: '1.0.0',
   mode: 'standalone-or-network',
 };

@@ -5,7 +5,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import { SalesInvoice } from '@rs-inventory/types';
-import { formatDate } from '@rs-inventory/business';
+import { formatDate } from '@rs-inventory/types';
 import { useAuthStore } from '../../store/authStore';
 
 interface PrintSalesReceiptModalProps {

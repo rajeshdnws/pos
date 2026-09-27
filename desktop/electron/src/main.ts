@@ -81,12 +81,23 @@ function createMainWindow(configService: ConfigService, loggerService: LoggerSer
   // Ensure application menu is null
   Menu.setApplicationMenu(null);
 
+  // Resolve icon path across dev & prod build modes
+  const possibleIconPaths = [
+    path.join(__dirname, '..', 'build', 'icon.ico'),
+    path.join(__dirname, 'assets', 'icon.ico'),
+    path.join(__dirname, '..', 'src', 'assets', 'icon.ico'),
+    path.resolve(process.cwd(), 'rs_inventory_solo.ico'),
+    path.resolve(process.cwd(), 'desktop', 'electron', 'build', 'icon.ico'),
+  ];
+  const appIconPath = possibleIconPaths.find((p) => fs.existsSync(p));
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 700,
     title: `${configService.getAppName()} – Solo`,
+    icon: appIconPath,
     backgroundColor: '#090d16',
     autoHideMenuBar: true,
     webPreferences: {
@@ -100,27 +111,18 @@ function createMainWindow(configService: ConfigService, loggerService: LoggerSer
     show: false,
   });
 
+
   mainWindow.setMenuBarVisibility(false);
   mainWindow.removeMenu();
 
-  const localRendererPath = path.resolve(
-    __dirname,
-    '..',
-    '..',
-    'renderer',
-    'dist',
-    'index.html',
-  );
-  const packagedRendererPath = path.resolve(
-    __dirname,
-    '..',
-    'renderer',
-    'dist',
-    'index.html',
-  );
-  const rendererPath = fs.existsSync(localRendererPath)
-    ? localRendererPath
-    : packagedRendererPath;
+  const candidateRendererPaths = [
+    path.resolve(__dirname, '..', 'dist-renderer', 'index.html'),
+    path.resolve(__dirname, '..', '..', 'renderer', 'dist', 'index.html'),
+    path.resolve(__dirname, '..', 'renderer', 'dist', 'index.html'),
+    path.resolve(process.cwd(), 'desktop', 'renderer', 'dist', 'index.html'),
+    path.resolve(process.cwd(), 'desktop', 'electron', 'dist-renderer', 'index.html'),
+  ];
+  const rendererPath = candidateRendererPaths.find((p) => fs.existsSync(p)) || candidateRendererPaths[0]!;
 
   // Step 8 & 9: Load React Application & Display
   let fallbackLoaded = false;

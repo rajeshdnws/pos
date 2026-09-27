@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Purchase } from '@rs-inventory/types';
-import { formatCurrency, formatDate, formatDateTime } from '@rs-inventory/business';
+import { formatCurrency, formatDate, formatDateTime } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { RecordPaymentModal } from './RecordPaymentModal';
 import { CreatePurchaseReturnModal } from './CreatePurchaseReturnModal';

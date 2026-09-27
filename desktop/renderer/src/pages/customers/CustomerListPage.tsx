@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Customer, CustomerFilterDTO } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { CustomerModal } from './CustomerModal';
 import { CustomerDetailsModal } from './CustomerDetailsModal';

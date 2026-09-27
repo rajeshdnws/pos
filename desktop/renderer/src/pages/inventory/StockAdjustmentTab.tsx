@@ -18,7 +18,7 @@ import {
   StockAdjustmentItemDTO,
   StockAdjustmentType,
 } from '@rs-inventory/types';
-import { formatCurrency, formatDateTime } from '@rs-inventory/business';
+import { formatCurrency, formatDateTime } from '@rs-inventory/types';
 
 export const StockAdjustmentTab: React.FC = () => {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);

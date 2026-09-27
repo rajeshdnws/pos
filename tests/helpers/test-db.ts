@@ -3,10 +3,17 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { DatabaseService } from '../../packages/database/src/database.service';
 
-export const TEMPLATE_DB_PATH = path.resolve(
-  __dirname,
-  '../../packages/database/prisma/dev-data/database/rs_inventory.db',
-);
+const candidateTemplatePaths = [
+  path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventorysolo.db'),
+  path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventory_solo.db'),
+  path.resolve(__dirname, '../../packages/database/prisma/dev-data/database/rs_inventory.db'),
+  path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventorysolo.db'),
+  path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventory_solo.db'),
+  path.resolve(process.cwd(), 'packages/database/prisma/dev-data/database/rs_inventory.db'),
+];
+
+export const TEMPLATE_DB_PATH =
+  candidateTemplatePaths.find((p) => fs.existsSync(p)) || candidateTemplatePaths[0];
 
 export async function createTestDatabase(): Promise<{
   dbPath: string;

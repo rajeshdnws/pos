@@ -17,7 +17,7 @@ import {
   StocktakeCreateDTO,
   StocktakeStatus,
 } from '@rs-inventory/types';
-import { formatDateTime } from '@rs-inventory/business';
+import { formatDateTime } from '@rs-inventory/types';
 
 export const StocktakeTab: React.FC = () => {
   const [stocktakes, setStocktakes] = useState<Stocktake[]>([]);

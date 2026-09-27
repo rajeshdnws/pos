@@ -5,7 +5,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Purchase, Company } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 
 interface PrintPurchaseInvoiceModalProps {
   purchaseId: string | null;

@@ -146,7 +146,7 @@ export class LicenseVerifierService {
       return null;
     }
 
-    return openResult.filePaths[0];
+    return openResult.filePaths[0] ?? null;
   }
 
   public async importLicenseFile(filePath?: string): Promise<LicenseStatusDTO> {

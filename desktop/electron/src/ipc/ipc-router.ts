@@ -102,12 +102,9 @@ import {
   // Step 6
   CustomerFilterDTO,
   CustomerCreateDTO,
-  CustomerUpdateDTO,
   CustomerLedgerFilterDTO,
   SalesFilterDTO,
   SalesInvoiceCreateDTO,
-  SalesInvoiceUpdateDTO,
-  SalesPostDTO,
   SalesCalculationInput,
   POSProductSearchFilterDTO,
   SalesPaymentCreateDTO,
@@ -145,6 +142,8 @@ import { LoggerService } from '../services/logger.service.js';
 import { BackupService } from '../services/backup.service.js';
 import { MachineIdService } from '../services/machine-id.service.js';
 import { LicenseVerifierService } from '../services/license-verifier.service.js';
+import { TelemetryService } from '../services/telemetry.service.js';
+
 
 let activeSessionUser: User | null = null;
 let activeSessionToken: string | null = null;
@@ -196,6 +195,36 @@ export function registerIpcHandlers(): void {
   const machineIdService = new MachineIdService();
   const licenseVerifierService = new LicenseVerifierService(licenseService, machineIdService);
   licenseVerifierService.initialize().catch((err) => loggerService.error('License initialization failed', err));
+
+  // Step 10b: Telemetry & Remote Tracking
+  const telemetryService = new TelemetryService(machineIdService);
+  const syncCompanyTelemetryProfile = (comp: Partial<Company> | null) => {
+    if (!comp) return;
+    telemetryService
+      .syncStoreProfile({
+        store_name: comp.name || comp.businessName || 'My Store',
+        owner_name: comp.ownerName || 'Store Owner',
+        mobile: comp.mobile || comp.phone || '',
+        email: comp.email || '',
+        address: comp.address || '',
+        city: comp.city || '',
+        state: comp.state || '',
+        pincode: comp.pincode || '',
+        country: comp.country || 'India',
+        gstin: comp.gstin || '',
+      })
+      .catch((err) => loggerService.warn('Company store profile telemetry sync failed:', err));
+  };
+
+  telemetryService.registerInstallation().then(async () => {
+    try {
+      const existingCompany = await companyService.getCompany();
+      syncCompanyTelemetryProfile(existingCompany);
+    } catch {
+      // Ignore if database not seeded yet
+    }
+  }).catch((err) => loggerService.warn('Automatic telemetry registration skipped:', err));
+
 
   // Step 11: Communication & Promotions
   const communicationService = new CommunicationService(prisma);
@@ -451,6 +480,9 @@ export function registerIpcHandlers(): void {
         activeSessionUser = response.user;
         activeSessionToken = response.sessionToken;
         activeSessionPermissions = response.permissions;
+        if (response.company) {
+          syncCompanyTelemetryProfile(response.company);
+        }
         return handleSuccess(response);
       } catch (err) {
         return handleError(err, 'COMPANY_SETUP_ERROR');
@@ -467,6 +499,7 @@ export function registerIpcHandlers(): void {
           return handleError(new Error('No active company found.'), 'NOT_FOUND');
         }
         let updated = await companyService.updateCompany(company.id, dto);
+        syncCompanyTelemetryProfile(updated);
         updated = normalizeCompanyLogo(updated) as Company;
         return handleSuccess(updated);
       } catch (err) {
@@ -2428,7 +2461,7 @@ export function registerIpcHandlers(): void {
       if (result.canceled || result.filePaths.length === 0) {
         return handleSuccess(null);
       }
-      return handleSuccess(result.filePaths[0]);
+      return handleSuccess(result.filePaths[0] ?? null);
     } catch (err) {
       return handleError(err, 'BACKUP_CHOOSE_DIRECTORY_ERROR');
     }
@@ -2449,7 +2482,7 @@ export function registerIpcHandlers(): void {
       if (result.canceled || result.filePaths.length === 0) {
         return handleSuccess(null);
       }
-      return handleSuccess(result.filePaths[0]);
+      return handleSuccess(result.filePaths[0] ?? null);
     } catch (err) {
       return handleError(err, 'BACKUP_CHOOSE_FILE_ERROR');
     }
@@ -2610,7 +2643,58 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  // ---------------- Step 10b: Remote Tracking & Telemetry ----------------
+
+  ipcMain.handle(
+    IPC_CHANNELS.TELEMETRY_REGISTER_INSTALLATION,
+    async (_event, customParams?: any): Promise<ApiResponse<any>> => {
+      try {
+        const result = await telemetryService.registerInstallation(customParams);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'TELEMETRY_REGISTER_INSTALLATION_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TELEMETRY_SYNC_STORE_PROFILE,
+    async (_event, profile: any): Promise<ApiResponse<any>> => {
+      try {
+        const result = await telemetryService.syncStoreProfile(profile);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'TELEMETRY_SYNC_STORE_PROFILE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TELEMETRY_ACTIVATE_LICENSE_ONLINE,
+    async (_event, licenseKey: string, customParams?: any): Promise<ApiResponse<any>> => {
+      try {
+        const result = await telemetryService.activateLicenseOnline(licenseKey, customParams);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'TELEMETRY_ACTIVATE_LICENSE_ONLINE_ERROR');
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TELEMETRY_VALIDATE_LICENSE_ONLINE,
+    async (_event, licenseKey: string, customParams?: any): Promise<ApiResponse<any>> => {
+      try {
+        const result = await telemetryService.validateLicenseOnline(licenseKey, customParams);
+        return handleSuccess(result);
+      } catch (err) {
+        return handleError(err, 'TELEMETRY_VALIDATE_LICENSE_ONLINE_ERROR');
+      }
+    },
+  );
+
   // ---------------- Step 11: Communication Settings & Logs ----------------
+
 
   ipcMain.handle(
     IPC_CHANNELS.COMMUNICATION_GET_CONFIG,

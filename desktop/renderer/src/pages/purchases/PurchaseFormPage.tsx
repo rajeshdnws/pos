@@ -21,7 +21,7 @@ import {
   Purchase,
   DiscountType,
 } from '@rs-inventory/types';
-import { formatCurrency, PurchaseCalculationService } from '@rs-inventory/business';
+import { formatCurrency, PurchaseCalculationService } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { SupplierModal } from '../suppliers/SupplierModal';
 

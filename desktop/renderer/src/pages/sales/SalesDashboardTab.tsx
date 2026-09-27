@@ -10,7 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { SalesDashboardKPIs, SalesInvoice } from '@rs-inventory/types';
-import { formatCurrency, formatDate } from '@rs-inventory/business';
+import { formatCurrency, formatDate } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { PrintSalesReceiptModal } from './PrintSalesReceiptModal';
 

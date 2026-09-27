@@ -26,30 +26,42 @@ export class LoyaltySettingsService {
       return this.mapToDTO(existing);
     }
 
-    // Initialize default settings
-    const created = await client.loyaltySettings.create({
-      data: {
-        companyId,
-        enabled: false,
-        earningMethod: 'AMOUNT_SPENT',
-        eligibleAmount: 100.0,
-        pointsPerEligibleAmount: 1.0,
-        redemptionValue: 1.0,
-        minimumRedemptionPoints: 10.0,
-        maximumRedemptionPercentage: 50.0,
-        minimumBillAmount: 100.0,
-        minimumRedemptionIncrement: 1.0,
-        pointExpiryDays: 0,
-        allowEarningOnDiscountedBills: true,
-        allowEarningOnBillsWithRedemption: true,
-        allowEarningOnTax: false,
-        allowEarningOnAdditionalCharges: false,
-        negativeBalancePolicy: 'ALLOW_NEGATIVE',
-        termsAndConditions: 'Earn 1 point for every ₹100 spent. Points can be redeemed on future qualifying purchases.',
-      },
-    });
+    try {
+      // Initialize default settings
+      const created = await client.loyaltySettings.create({
+        data: {
+          companyId,
+          enabled: false,
+          earningMethod: 'AMOUNT_SPENT',
+          eligibleAmount: 100.0,
+          pointsPerEligibleAmount: 1.0,
+          redemptionValue: 1.0,
+          minimumRedemptionPoints: 10.0,
+          maximumRedemptionPercentage: 50.0,
+          minimumBillAmount: 100.0,
+          minimumRedemptionIncrement: 1.0,
+          pointExpiryDays: 0,
+          allowEarningOnDiscountedBills: true,
+          allowEarningOnBillsWithRedemption: true,
+          allowEarningOnTax: false,
+          allowEarningOnAdditionalCharges: false,
+          negativeBalancePolicy: 'ALLOW_NEGATIVE',
+          termsAndConditions: 'Earn 1 point for every ₹100 spent. Points can be redeemed on future qualifying purchases.',
+        },
+      });
 
-    return this.mapToDTO(created);
+      return this.mapToDTO(created);
+    } catch (err: any) {
+      if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+        const fallback = await client.loyaltySettings.findUnique({
+          where: { companyId },
+        });
+        if (fallback) {
+          return this.mapToDTO(fallback);
+        }
+      }
+      throw err;
+    }
   }
 
   /**

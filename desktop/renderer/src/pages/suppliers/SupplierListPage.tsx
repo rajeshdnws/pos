@@ -17,7 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Supplier, SupplierFilterDTO } from '@rs-inventory/types';
-import { formatCurrency } from '@rs-inventory/business';
+import { formatCurrency } from '@rs-inventory/types';
 import { useNotificationStore } from '../../store/notificationStore';
 import { SupplierModal } from './SupplierModal';
 import { SupplierDetailsModal } from './SupplierDetailsModal';

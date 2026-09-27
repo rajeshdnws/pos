@@ -23,8 +23,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@rs-inventory/types": ["../../packages/types/src/index.ts"]
+      "@rs-inventory/types": ["../../packages/types/src/index.ts"],
+      "@rs-inventory/business": ["../../packages/business/src/browser.ts"],
+
+      "@rs-inventory/database": ["../../packages/database/src/index.ts"],
+      "@rs-inventory/printing": ["../../packages/printing/src/index.ts"]
     }
   },
+
   "include": ["src"]
 }
